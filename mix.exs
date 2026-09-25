@@ -51,6 +51,7 @@ defmodule Unlokao.MixProject do
       {:oban, "~> 2.24"},
       {:cors_plug, "~> 3.0"},
       {:hammer, "~> 7.5"},
+      {:open_api_spex, "~> 3.22"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"}
     ]

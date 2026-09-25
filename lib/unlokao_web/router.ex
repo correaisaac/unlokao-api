@@ -5,6 +5,7 @@ defmodule UnlokaoWeb.Router do
 
   pipeline :api do
     plug :accepts, ["json"]
+    plug OpenApiSpex.Plug.PutApiSpec, module: UnlokaoWeb.ApiSpec
     plug :buscar_usuario_atual
   end
 
@@ -15,6 +16,18 @@ defmodule UnlokaoWeb.Router do
   pipeline :admin do
     plug :exigir_autenticacao
     plug :exigir_admin
+  end
+
+  pipeline :documentacao do
+    plug OpenApiSpex.Plug.PutApiSpec, module: UnlokaoWeb.ApiSpec
+  end
+
+  # Documentação (#25): especificação OpenAPI e Swagger UI
+  scope "/api" do
+    pipe_through :documentacao
+
+    get "/openapi", OpenApiSpex.Plug.RenderSpec, []
+    get "/docs", OpenApiSpex.Plug.SwaggerUI, path: "/api/openapi"
   end
 
   pipeline :limite_login do
