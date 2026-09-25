@@ -32,6 +32,11 @@ config :phoenix,
 
 config :unlokao, Unlokao.Mailer, adapter: Swoosh.Adapters.Test
 
+# Limites altos para os testes não esbarrarem neles (o teste do limite ajusta o seu)
+config :unlokao, :limites_de_tentativas,
+  login: {1_000_000, :timer.minutes(1)},
+  esqueci_senha: {1_000_000, :timer.hours(1)}
+
 # Nos testes, os jobs só rodam quando o teste manda
 config :unlokao, Oban, testing: :manual
 

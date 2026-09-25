@@ -13,6 +13,7 @@ defmodule Unlokao.Application do
       {DNSCluster, query: Application.get_env(:unlokao, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Unlokao.PubSub},
       {Oban, Application.fetch_env!(:unlokao, Oban)},
+      {Unlokao.Limitador, clean_period: :timer.minutes(10)},
       # Start to serve requests, typically the last entry
       UnlokaoWeb.Endpoint
     ]

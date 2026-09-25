@@ -44,7 +44,12 @@ config :unlokao,
   # Prazo de devolução quando o empréstimo é registrado sem `prazo`
   prazo_padrao_em_horas: 4,
   # Origens que podem chamar a API pelo navegador (CORS)
-  cors_origens: ["http://localhost:5173"]
+  cors_origens: ["http://localhost:5173"],
+  # Máximo de chamadas por IP em cada janela: {máximo, janela em ms}
+  limites_de_tentativas: [
+    login: {10, :timer.minutes(1)},
+    esqueci_senha: {5, :timer.hours(1)}
+  ]
 
 # Configure Elixir's Logger
 config :logger, :default_formatter,

@@ -50,6 +50,7 @@ defmodule Unlokao.MixProject do
       {:swoosh, "~> 1.19"},
       {:oban, "~> 2.24"},
       {:cors_plug, "~> 3.0"},
+      {:hammer, "~> 7.5"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"}
     ]

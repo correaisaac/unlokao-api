@@ -17,12 +17,30 @@ defmodule UnlokaoWeb.Router do
     plug :exigir_admin
   end
 
+  pipeline :limite_login do
+    plug UnlokaoWeb.LimiteDeTentativas, :login
+  end
+
+  pipeline :limite_esqueci_senha do
+    plug UnlokaoWeb.LimiteDeTentativas, :esqueci_senha
+  end
+
   # Rotas públicas
+  scope "/api", UnlokaoWeb do
+    pipe_through [:api, :limite_login]
+
+    post "/login", SessaoController, :create
+  end
+
+  scope "/api", UnlokaoWeb do
+    pipe_through [:api, :limite_esqueci_senha]
+
+    post "/senha/esqueci", SenhaController, :esqueci
+  end
+
   scope "/api", UnlokaoWeb do
     pipe_through :api
 
-    post "/login", SessaoController, :create
-    post "/senha/esqueci", SenhaController, :esqueci
     post "/senha/redefinir", SenhaController, :redefinir
   end
 
