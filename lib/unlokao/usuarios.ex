@@ -6,6 +6,7 @@ defmodule Unlokao.Usuarios do
   import Ecto.Query, warn: false
   alias Unlokao.Repo
 
+  alias Unlokao.Emprestimos
   alias Unlokao.Paginacao
   alias Unlokao.Usuarios.Usuario
 
@@ -68,16 +69,19 @@ defmodule Unlokao.Usuarios do
 
   @doc """
   Desativa um usuário. `ator` é quem está fazendo a exclusão: ninguém exclui a si mesmo.
+  Quem está com chave emprestada precisa devolvê-la antes (#21).
   As sessões do usuário deixam de valer porque só usuários ativos são autenticados.
-
-  TODO (épico de empréstimo): bloquear quando o usuário tiver chave não devolvida.
   """
   def delete_usuario(%Usuario{id: id}, %Usuario{id: id}),
     do: {:error, {:unprocessable, "você não pode excluir o próprio usuário"}}
 
   def delete_usuario(%Usuario{} = usuario, %Usuario{} = _ator) do
-    usuario
-    |> Usuario.delete_changeset()
-    |> Repo.update()
+    if Emprestimos.emprestimo_aberto?(usuario) do
+      {:error, {:conflict, "o usuário está com chave emprestada e precisa devolvê-la antes"}}
+    else
+      usuario
+      |> Usuario.delete_changeset()
+      |> Repo.update()
+    end
   end
 end

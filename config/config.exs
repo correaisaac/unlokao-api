@@ -30,7 +30,9 @@ config :swoosh, :api_client, false
 config :unlokao,
   email_remetente: {"Unlokao", "nao-responda@unlokao.local"},
   # Página do front que recebe `?token=...` para redefinir a senha
-  url_redefinir_senha: "http://localhost:5173/redefinir-senha"
+  url_redefinir_senha: "http://localhost:5173/redefinir-senha",
+  # Prazo de devolução quando o empréstimo é registrado sem `prazo`
+  prazo_padrao_em_horas: 4
 
 # Configure Elixir's Logger
 config :logger, :default_formatter,

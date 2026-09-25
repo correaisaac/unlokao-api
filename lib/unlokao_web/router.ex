@@ -33,6 +33,7 @@ defmodule UnlokaoWeb.Router do
     post "/logout", SessaoController, :delete
     get "/me", ContaController, :show
     put "/me/senha", ContaController, :trocar_senha
+    get "/me/emprestimos", EmprestimoController, :meus
 
     resources "/chaves", ChaveController, only: [:index, :show]
   end
@@ -43,5 +44,8 @@ defmodule UnlokaoWeb.Router do
 
     resources "/chaves", ChaveController, only: [:create, :update, :delete]
     resources "/usuarios", UsuarioController, except: [:new, :edit]
+
+    resources "/emprestimos", EmprestimoController, only: [:index, :show, :create]
+    post "/emprestimos/:id/devolucao", EmprestimoController, :devolver
   end
 end
