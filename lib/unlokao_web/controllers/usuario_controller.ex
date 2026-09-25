@@ -6,9 +6,10 @@ defmodule UnlokaoWeb.UsuarioController do
 
   action_fallback UnlokaoWeb.FallbackController
 
-  def index(conn, _params) do
-    usuarios = Usuarios.list_usuarios()
-    render(conn, :index, usuarios: usuarios)
+  def index(conn, params) do
+    with {:ok, pagina} <- Usuarios.list_usuarios(params) do
+      render(conn, :index, pagina: pagina)
+    end
   end
 
   def create(conn, params) do

@@ -6,9 +6,10 @@ defmodule UnlokaoWeb.ChaveController do
 
   action_fallback UnlokaoWeb.FallbackController
 
-  def index(conn, _params) do
-    chaves = Chaves.list_chaves()
-    render(conn, :index, chaves: chaves)
+  def index(conn, params) do
+    with {:ok, pagina} <- Chaves.list_chaves(params) do
+      render(conn, :index, pagina: pagina)
+    end
   end
 
   def create(conn, params) do

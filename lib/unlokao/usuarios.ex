@@ -6,14 +6,38 @@ defmodule Unlokao.Usuarios do
   import Ecto.Query, warn: false
   alias Unlokao.Repo
 
+  alias Unlokao.Paginacao
   alias Unlokao.Usuarios.Usuario
 
-  @doc "Lista os usuários ativos, ordenados pelo nome."
-  def list_usuarios do
-    Usuario
-    |> where(ativo: true)
-    |> order_by(:nome)
-    |> Repo.all()
+  @doc """
+  Lista os usuários ativos, ordenados pelo nome, com paginação.
+
+  Filtros: `perfil` e `busca` (procura no nome, e-mail e matrícula).
+  """
+  def list_usuarios(params \\ %{}) do
+    filtros = %{perfil: Paginacao.enum(Ecto.Enum.values(Usuario, :perfil)), busca: :string}
+
+    with {:ok, params} <- Paginacao.validar(params, filtros) do
+      query =
+        Enum.reduce(params, where(Usuario, ativo: true), fn
+          {:perfil, perfil}, query ->
+            where(query, perfil: ^perfil)
+
+          {:busca, busca}, query ->
+            padrao = Paginacao.contem(busca)
+
+            where(
+              query,
+              [u],
+              ilike(u.nome, ^padrao) or ilike(u.email, ^padrao) or ilike(u.matricula, ^padrao)
+            )
+
+          _, query ->
+            query
+        end)
+
+      {:ok, query |> order_by([:nome, :id]) |> Paginacao.paginar(params)}
+    end
   end
 
   @doc """

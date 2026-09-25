@@ -7,13 +7,43 @@ defmodule Unlokao.Chaves do
   alias Unlokao.Repo
 
   alias Unlokao.Chaves.Chave
+  alias Unlokao.Paginacao
 
-  @doc "Lista as chaves ativas, ordenadas pelo código."
-  def list_chaves do
-    Chave
-    |> where(ativo: true)
-    |> order_by(:codigo)
-    |> Repo.all()
+  @doc """
+  Lista as chaves ativas, ordenadas pelo código, com paginação.
+
+  Filtros: `status`, `bloco` e `busca` (procura no código e no espaço).
+  """
+  def list_chaves(params \\ %{}) do
+    filtros = %{
+      status: Paginacao.enum(Ecto.Enum.values(Chave, :status)),
+      bloco: :string,
+      busca: :string
+    }
+
+    with {:ok, params} <- Paginacao.validar(params, filtros) do
+      query =
+        Enum.reduce(params, where(Chave, ativo: true), fn
+          {:status, status}, query ->
+            where(query, status: ^status)
+
+          {:bloco, bloco}, query ->
+            where(query, [c], ilike(c.bloco, ^bloco))
+
+          {:busca, busca}, query ->
+            where(
+              query,
+              [c],
+              ilike(c.codigo, ^Paginacao.contem(busca)) or
+                ilike(c.espaco, ^Paginacao.contem(busca))
+            )
+
+          _, query ->
+            query
+        end)
+
+      {:ok, query |> order_by([:codigo, :id]) |> Paginacao.paginar(params)}
+    end
   end
 
   @doc """

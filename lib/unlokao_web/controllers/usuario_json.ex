@@ -1,8 +1,8 @@
 defmodule UnlokaoWeb.UsuarioJSON do
   alias Unlokao.Usuarios.Usuario
 
-  def index(%{usuarios: usuarios}) do
-    %{data: for(usuario <- usuarios, do: data(usuario))}
+  def index(%{pagina: pagina}) do
+    UnlokaoWeb.PaginacaoJSON.render(pagina, &data/1)
   end
 
   def show(%{usuario: usuario}) do
