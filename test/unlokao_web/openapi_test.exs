@@ -78,6 +78,10 @@ defmodule UnlokaoWeb.OpenApiTest do
       |> assert_documentado()
     end
 
+    test "health check" do
+      build_conn() |> get(~p"/api/health") |> assert_documentado() |> json_response(200)
+    end
+
     test "chaves", %{conn: conn} do
       chave = chave_fixture()
 

@@ -34,6 +34,10 @@ defmodule UnlokaoWeb.Endpoint do
     plug Phoenix.Ecto.CheckRepoStatus, otp_app: :unlokao
   end
 
+  # Atrás do proxy da hospedagem, o IP do cliente vem no X-Forwarded-For.
+  # Sem isso o limite de tentativas contaria todos os usuários como um IP só.
+  plug RemoteIp
+
   plug Plug.RequestId
 
   # CORS: libera o front (outra origem) a chamar a API. As origens vêm de

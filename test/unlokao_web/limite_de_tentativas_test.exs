@@ -45,6 +45,24 @@ defmodule UnlokaoWeb.LimiteDeTentativasTest do
              post(%{conn | remote_ip: ip}, ~p"/api/login", email: "a@b.c", senha: "x")
   end
 
+  test "atrás de proxy, conta pelo IP do cliente no X-Forwarded-For", %{ip: ip} do
+    proxy = {10, 1, 1, 1}
+    cliente = "203.0.113.#{:rand.uniform(254)}"
+
+    login = fn ->
+      %{build_conn() | remote_ip: proxy}
+      |> put_req_header("x-forwarded-for", cliente)
+      |> post(~p"/api/login", email: "a@b.c", senha: "x")
+    end
+
+    for _ <- 1..3, do: assert(%{status: 401} = login.())
+    assert %{status: 429} = login.()
+
+    # Outro cliente atrás do mesmo proxy não é bloqueado
+    assert %{status: 401} =
+             post(%{build_conn() | remote_ip: ip}, ~p"/api/login", email: "a@b.c", senha: "x")
+  end
+
   test "outro IP não é afetado", %{conn: conn, ip: ip} do
     for _ <- 1..4, do: post(%{conn | remote_ip: ip}, ~p"/api/login", email: "a@b.c", senha: "x")
 

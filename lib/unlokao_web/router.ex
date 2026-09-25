@@ -55,6 +55,7 @@ defmodule UnlokaoWeb.Router do
     pipe_through :api
 
     post "/senha/redefinir", SenhaController, :redefinir
+    get "/health", SaudeController, :show
   end
 
   # Qualquer usuário logado
