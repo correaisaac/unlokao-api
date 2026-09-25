@@ -1,5 +1,6 @@
 defmodule Unlokao.EmprestimosTest do
   use Unlokao.DataCase
+  use Oban.Testing, repo: Unlokao.Repo
 
   alias Unlokao.{Chaves, Emprestimos, Usuarios}
   alias Unlokao.Emprestimos.Emprestimo
@@ -173,6 +174,33 @@ defmodule Unlokao.EmprestimosTest do
                Emprestimos.list_emprestimos_do_usuario(meu.usuario, params)
 
       assert id == meu.id
+    end
+  end
+
+  describe "avisar_atrasos/0 (#22)" do
+    import Swoosh.TestAssertions
+
+    test "avisa cada atrasado uma única vez", %{admin: admin} do
+      atrasado = emprestimo_fixture(admin: admin) |> atrasar()
+      _em_dia = emprestimo_fixture(admin: admin)
+      devolvido_atrasado = emprestimo_fixture(admin: admin) |> atrasar()
+      {:ok, _} = Emprestimos.registrar_devolucao(devolvido_atrasado, admin)
+
+      assert {:ok, 1} = Emprestimos.avisar_atrasos()
+
+      assert_email_sent(fn email ->
+        assert email.to == [{atrasado.usuario.nome, atrasado.usuario.email}]
+        assert email.subject =~ atrasado.chave.codigo
+      end)
+
+      assert {:ok, 0} = Emprestimos.avisar_atrasos()
+      assert_no_email_sent()
+    end
+
+    test "o job do Oban executa o aviso", %{admin: admin} do
+      emprestimo_fixture(admin: admin) |> atrasar()
+      assert :ok = perform_job(Unlokao.Emprestimos.AvisarAtrasos, %{})
+      assert_email_sent()
     end
   end
 

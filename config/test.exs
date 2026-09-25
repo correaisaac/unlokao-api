@@ -32,5 +32,8 @@ config :phoenix,
 
 config :unlokao, Unlokao.Mailer, adapter: Swoosh.Adapters.Test
 
+# Nos testes, os jobs só rodam quando o teste manda
+config :unlokao, Oban, testing: :manual
+
 # Hash de senha rápido nos testes
 config :pbkdf2_elixir, :rounds, 1

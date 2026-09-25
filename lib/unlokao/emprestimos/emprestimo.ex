@@ -17,6 +17,7 @@ defmodule Unlokao.Emprestimos.Emprestimo do
     field :prazo, :utc_datetime
     field :devolvida_em, :utc_datetime
     field :observacao, :string
+    field :atraso_avisado_em, :utc_datetime
 
     timestamps(type: :utc_datetime)
   end

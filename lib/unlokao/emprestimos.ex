@@ -7,7 +7,7 @@ defmodule Unlokao.Emprestimos do
   alias Unlokao.Repo
 
   alias Unlokao.Chaves.Chave
-  alias Unlokao.Emprestimos.Emprestimo
+  alias Unlokao.Emprestimos.{Emprestimo, Notificador}
   alias Unlokao.Paginacao
   alias Unlokao.Usuarios.Usuario
 
@@ -126,6 +126,27 @@ defmodule Unlokao.Emprestimos do
 
       Emprestimo |> Repo.get!(emprestimo.id) |> Repo.preload(@relacoes)
     end)
+  end
+
+  @doc """
+  Manda um e-mail para cada empréstimo atrasado que ainda não foi avisado (#22).
+  Se o envio falhar, o empréstimo continua pendente e é tentado de novo na próxima rodada.
+  """
+  def avisar_atrasos do
+    agora = DateTime.utc_now(:second)
+
+    avisados =
+      from(e in Emprestimo,
+        where: is_nil(e.devolvida_em) and e.prazo < ^agora and is_nil(e.atraso_avisado_em),
+        preload: [:chave, :usuario]
+      )
+      |> Repo.all()
+      |> Enum.filter(&match?({:ok, _}, Notificador.enviar_aviso_de_atraso(&1)))
+
+    ids = Enum.map(avisados, & &1.id)
+    Repo.update_all(from(e in Emprestimo, where: e.id in ^ids), set: [atraso_avisado_em: agora])
+
+    {:ok, length(avisados)}
   end
 
   defp verificar_usuario(usuario_id, changeset) do

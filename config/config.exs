@@ -22,6 +22,16 @@ config :unlokao, UnlokaoWeb.Endpoint,
   pubsub_server: Unlokao.PubSub,
   live_view: [signing_salt: "QTCH1H5R"]
 
+# Jobs em segundo plano (Oban). O aviso de atraso roda a cada 15 minutos.
+config :unlokao, Oban,
+  engine: Oban.Engines.Basic,
+  repo: Unlokao.Repo,
+  queues: [default: 10],
+  plugins: [
+    Oban.Plugins.Pruner,
+    {Oban.Plugins.Cron, crontab: [{"*/15 * * * *", Unlokao.Emprestimos.AvisarAtrasos}]}
+  ]
+
 # E-mails: em dev só aparecem no log. Em prod, trocar o adapter
 # pelo provedor escolhido (ver https://hexdocs.pm/swoosh).
 config :unlokao, Unlokao.Mailer, adapter: Swoosh.Adapters.Logger
