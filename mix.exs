@@ -48,6 +48,12 @@ defmodule Unlokao.MixProject do
       {:jason, "~> 1.2"},
       {:pbkdf2_elixir, "~> 2.3"},
       {:swoosh, "~> 1.19"},
+      {:oban, "~> 2.24"},
+      {:cors_plug, "~> 3.0"},
+      {:hammer, "~> 7.5"},
+      {:open_api_spex, "~> 3.22"},
+      {:gen_smtp, "~> 1.3"},
+      {:remote_ip, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"}
     ]

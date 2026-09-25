@@ -9,13 +9,19 @@ defmodule UnlokaoWeb.ChaveControllerTest do
 
   setup :autenticar_admin
 
-  test "GET /api/chaves lista as chaves ativas", %{conn: conn} do
+  test "GET /api/chaves lista as chaves ativas com paginação", %{conn: conn} do
     chave = chave_fixture()
 
-    assert [%{"id" => id}] =
-             conn |> get(~p"/api/chaves") |> json_response(200) |> Map.fetch!("data")
+    assert %{"data" => [%{"id" => id}], "meta" => meta} =
+             conn |> get(~p"/api/chaves") |> json_response(200)
 
     assert id == chave.id
+    assert meta == %{"pagina" => 1, "por_pagina" => 20, "total" => 1, "total_paginas" => 1}
+  end
+
+  test "GET /api/chaves com filtro inválido retorna 422", %{conn: conn} do
+    assert %{"status" => _} =
+             json_response(get(conn, ~p"/api/chaves?status=sumida"), 422)["errors"]
   end
 
   describe "POST /api/chaves" do

@@ -49,6 +49,18 @@ defmodule Unlokao.UsuariosTest do
     end
   end
 
+  describe "list_usuarios/1 (#26)" do
+    test "filtra por perfil e busca em nome, e-mail e matrícula" do
+      maria = usuario_fixture(nome: "Maria", matricula: "111")
+      joao = usuario_fixture(nome: "João", perfil: :professor, email: "joao@uni.edu.br")
+
+      assert {:ok, %{itens: [^joao]}} = Usuarios.list_usuarios(%{"perfil" => "professor"})
+      assert {:ok, %{itens: [^maria]}} = Usuarios.list_usuarios(%{"busca" => "MAR"})
+      assert {:ok, %{itens: [^joao]}} = Usuarios.list_usuarios(%{"busca" => "joao@"})
+      assert {:ok, %{itens: [^maria]}} = Usuarios.list_usuarios(%{"busca" => "111"})
+    end
+  end
+
   describe "update_usuario/2 (#7)" do
     test "atualiza os dados" do
       usuario = usuario_fixture()
@@ -72,7 +84,7 @@ defmodule Unlokao.UsuariosTest do
       admin = usuario_fixture(perfil: :admin)
       usuario = usuario_fixture()
       assert {:ok, %Usuario{ativo: false}} = Usuarios.delete_usuario(usuario, admin)
-      assert Usuarios.list_usuarios() == [admin]
+      assert {:ok, %{itens: [^admin]}} = Usuarios.list_usuarios()
       assert Usuarios.fetch_usuario(usuario.id) == {:error, :not_found}
       assert Repo.get(Usuario, usuario.id)
     end

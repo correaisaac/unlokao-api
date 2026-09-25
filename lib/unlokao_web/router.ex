@@ -5,6 +5,7 @@ defmodule UnlokaoWeb.Router do
 
   pipeline :api do
     plug :accepts, ["json"]
+    plug OpenApiSpex.Plug.PutApiSpec, module: UnlokaoWeb.ApiSpec
     plug :buscar_usuario_atual
   end
 
@@ -17,13 +18,44 @@ defmodule UnlokaoWeb.Router do
     plug :exigir_admin
   end
 
+  pipeline :documentacao do
+    plug OpenApiSpex.Plug.PutApiSpec, module: UnlokaoWeb.ApiSpec
+  end
+
+  # Documentação (#25): especificação OpenAPI e Swagger UI
+  scope "/api" do
+    pipe_through :documentacao
+
+    get "/openapi", OpenApiSpex.Plug.RenderSpec, []
+    get "/docs", OpenApiSpex.Plug.SwaggerUI, path: "/api/openapi"
+  end
+
+  pipeline :limite_login do
+    plug UnlokaoWeb.LimiteDeTentativas, :login
+  end
+
+  pipeline :limite_esqueci_senha do
+    plug UnlokaoWeb.LimiteDeTentativas, :esqueci_senha
+  end
+
   # Rotas públicas
+  scope "/api", UnlokaoWeb do
+    pipe_through [:api, :limite_login]
+
+    post "/login", SessaoController, :create
+  end
+
+  scope "/api", UnlokaoWeb do
+    pipe_through [:api, :limite_esqueci_senha]
+
+    post "/senha/esqueci", SenhaController, :esqueci
+  end
+
   scope "/api", UnlokaoWeb do
     pipe_through :api
 
-    post "/login", SessaoController, :create
-    post "/senha/esqueci", SenhaController, :esqueci
     post "/senha/redefinir", SenhaController, :redefinir
+    get "/health", SaudeController, :show
   end
 
   # Qualquer usuário logado
@@ -33,6 +65,7 @@ defmodule UnlokaoWeb.Router do
     post "/logout", SessaoController, :delete
     get "/me", ContaController, :show
     put "/me/senha", ContaController, :trocar_senha
+    get "/me/emprestimos", EmprestimoController, :meus
 
     resources "/chaves", ChaveController, only: [:index, :show]
   end
@@ -43,5 +76,8 @@ defmodule UnlokaoWeb.Router do
 
     resources "/chaves", ChaveController, only: [:create, :update, :delete]
     resources "/usuarios", UsuarioController, except: [:new, :edit]
+
+    resources "/emprestimos", EmprestimoController, only: [:index, :show, :create]
+    post "/emprestimos/:id/devolucao", EmprestimoController, :devolver
   end
 end

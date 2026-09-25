@@ -6,14 +6,39 @@ defmodule Unlokao.Usuarios do
   import Ecto.Query, warn: false
   alias Unlokao.Repo
 
+  alias Unlokao.Emprestimos
+  alias Unlokao.Paginacao
   alias Unlokao.Usuarios.Usuario
 
-  @doc "Lista os usuários ativos, ordenados pelo nome."
-  def list_usuarios do
-    Usuario
-    |> where(ativo: true)
-    |> order_by(:nome)
-    |> Repo.all()
+  @doc """
+  Lista os usuários ativos, ordenados pelo nome, com paginação.
+
+  Filtros: `perfil` e `busca` (procura no nome, e-mail e matrícula).
+  """
+  def list_usuarios(params \\ %{}) do
+    filtros = %{perfil: Paginacao.enum(Ecto.Enum.values(Usuario, :perfil)), busca: :string}
+
+    with {:ok, params} <- Paginacao.validar(params, filtros) do
+      query =
+        Enum.reduce(params, where(Usuario, ativo: true), fn
+          {:perfil, perfil}, query ->
+            where(query, perfil: ^perfil)
+
+          {:busca, busca}, query ->
+            padrao = Paginacao.contem(busca)
+
+            where(
+              query,
+              [u],
+              ilike(u.nome, ^padrao) or ilike(u.email, ^padrao) or ilike(u.matricula, ^padrao)
+            )
+
+          _, query ->
+            query
+        end)
+
+      {:ok, query |> order_by([:nome, :id]) |> Paginacao.paginar(params)}
+    end
   end
 
   @doc """
@@ -44,16 +69,19 @@ defmodule Unlokao.Usuarios do
 
   @doc """
   Desativa um usuário. `ator` é quem está fazendo a exclusão: ninguém exclui a si mesmo.
+  Quem está com chave emprestada precisa devolvê-la antes (#21).
   As sessões do usuário deixam de valer porque só usuários ativos são autenticados.
-
-  TODO (épico de empréstimo): bloquear quando o usuário tiver chave não devolvida.
   """
   def delete_usuario(%Usuario{id: id}, %Usuario{id: id}),
     do: {:error, {:unprocessable, "você não pode excluir o próprio usuário"}}
 
   def delete_usuario(%Usuario{} = usuario, %Usuario{} = _ator) do
-    usuario
-    |> Usuario.delete_changeset()
-    |> Repo.update()
+    if Emprestimos.emprestimo_aberto?(usuario) do
+      {:error, {:conflict, "o usuário está com chave emprestada e precisa devolvê-la antes"}}
+    else
+      usuario
+      |> Usuario.delete_changeset()
+      |> Repo.update()
+    end
   end
 end
