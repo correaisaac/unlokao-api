@@ -42,7 +42,9 @@ config :unlokao,
   # Página do front que recebe `?token=...` para redefinir a senha
   url_redefinir_senha: "http://localhost:5173/redefinir-senha",
   # Prazo de devolução quando o empréstimo é registrado sem `prazo`
-  prazo_padrao_em_horas: 4
+  prazo_padrao_em_horas: 4,
+  # Origens que podem chamar a API pelo navegador (CORS)
+  cors_origens: ["http://localhost:5173"]
 
 # Configure Elixir's Logger
 config :logger, :default_formatter,

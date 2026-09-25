@@ -49,6 +49,7 @@ defmodule Unlokao.MixProject do
       {:pbkdf2_elixir, "~> 2.3"},
       {:swoosh, "~> 1.19"},
       {:oban, "~> 2.24"},
+      {:cors_plug, "~> 3.0"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"}
     ]

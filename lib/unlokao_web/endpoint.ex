@@ -35,6 +35,16 @@ defmodule UnlokaoWeb.Endpoint do
   end
 
   plug Plug.RequestId
+
+  # CORS: libera o front (outra origem) a chamar a API. As origens vêm de
+  # `config :unlokao, :cors_origens` (em prod, da variável CORS_ORIGINS).
+  # Sem cookies: a autenticação é por token no cabeçalho Authorization.
+  plug CORSPlug,
+    origin: &__MODULE__.cors_origens/0,
+    credentials: false,
+    headers: ["Authorization", "Content-Type", "Accept"],
+    expose: ["Location", "Retry-After"]
+
   plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
 
   plug Plug.Parsers,
@@ -46,4 +56,7 @@ defmodule UnlokaoWeb.Endpoint do
   plug Plug.Head
   plug Plug.Session, @session_options
   plug UnlokaoWeb.Router
+
+  @doc false
+  def cors_origens, do: Application.fetch_env!(:unlokao, :cors_origens)
 end

@@ -57,6 +57,12 @@ if config_env() == :prod do
 
   config :unlokao, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
+  if origens = System.get_env("CORS_ORIGINS") do
+    config :unlokao,
+           :cors_origens,
+           origens |> String.split(",", trim: true) |> Enum.map(&String.trim/1)
+  end
+
   if url = System.get_env("URL_REDEFINIR_SENHA") do
     config :unlokao, :url_redefinir_senha, url
   end
