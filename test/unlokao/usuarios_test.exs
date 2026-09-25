@@ -67,13 +67,19 @@ defmodule Unlokao.UsuariosTest do
     end
   end
 
-  describe "delete_usuario/1 (#8)" do
+  describe "delete_usuario/2 (#8)" do
     test "desativa: some da listagem e da busca, mas continua no banco" do
+      admin = usuario_fixture(perfil: :admin)
       usuario = usuario_fixture()
-      assert {:ok, %Usuario{ativo: false}} = Usuarios.delete_usuario(usuario)
-      assert Usuarios.list_usuarios() == []
+      assert {:ok, %Usuario{ativo: false}} = Usuarios.delete_usuario(usuario, admin)
+      assert Usuarios.list_usuarios() == [admin]
       assert Usuarios.fetch_usuario(usuario.id) == {:error, :not_found}
       assert Repo.get(Usuario, usuario.id)
+    end
+
+    test "ninguém exclui a si mesmo" do
+      admin = usuario_fixture(perfil: :admin)
+      assert {:error, {:unprocessable, _}} = Usuarios.delete_usuario(admin, admin)
     end
   end
 end

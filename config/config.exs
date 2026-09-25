@@ -22,6 +22,16 @@ config :unlokao, UnlokaoWeb.Endpoint,
   pubsub_server: Unlokao.PubSub,
   live_view: [signing_salt: "QTCH1H5R"]
 
+# E-mails: em dev só aparecem no log. Em prod, trocar o adapter
+# pelo provedor escolhido (ver https://hexdocs.pm/swoosh).
+config :unlokao, Unlokao.Mailer, adapter: Swoosh.Adapters.Logger
+config :swoosh, :api_client, false
+
+config :unlokao,
+  email_remetente: {"Unlokao", "nao-responda@unlokao.local"},
+  # Página do front que recebe `?token=...` para redefinir a senha
+  url_redefinir_senha: "http://localhost:5173/redefinir-senha"
+
 # Configure Elixir's Logger
 config :logger, :default_formatter,
   format: "$time $metadata[$level] $message\n",

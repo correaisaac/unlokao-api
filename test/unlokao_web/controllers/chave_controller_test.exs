@@ -7,6 +7,8 @@ defmodule UnlokaoWeb.ChaveControllerTest do
     {:ok, conn: put_req_header(conn, "accept", "application/json")}
   end
 
+  setup :autenticar_admin
+
   test "GET /api/chaves lista as chaves ativas", %{conn: conn} do
     chave = chave_fixture()
 

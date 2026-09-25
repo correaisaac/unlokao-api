@@ -35,7 +35,7 @@ defmodule UnlokaoWeb.UsuarioController do
 
   def delete(conn, %{"id" => id}) do
     with {:ok, usuario} <- Usuarios.fetch_usuario(id),
-         {:ok, %Usuario{}} <- Usuarios.delete_usuario(usuario) do
+         {:ok, %Usuario{}} <- Usuarios.delete_usuario(usuario, conn.assigns.usuario_atual) do
       send_resp(conn, :no_content, "")
     end
   end

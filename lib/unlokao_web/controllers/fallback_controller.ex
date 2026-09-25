@@ -5,6 +5,9 @@ defmodule UnlokaoWeb.FallbackController do
     * campo duplicado (código, e-mail, matrícula) -> 409
     * outros erros de validação                   -> 422
     * regra de negócio em conflito                -> 409
+    * regra de negócio que impede a ação          -> 422
+    * e-mail ou senha errados no login            -> 401
+    * link de redefinição de senha inválido       -> 422
   """
   use UnlokaoWeb, :controller
 
@@ -19,6 +22,24 @@ defmodule UnlokaoWeb.FallbackController do
     conn
     |> put_status(:conflict)
     |> json(%{errors: %{detail: mensagem}})
+  end
+
+  def call(conn, {:error, {:unprocessable, mensagem}}) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(%{errors: %{detail: mensagem}})
+  end
+
+  def call(conn, {:error, :credenciais_invalidas}) do
+    conn
+    |> put_status(:unauthorized)
+    |> json(%{errors: %{detail: "e-mail ou senha inválidos"}})
+  end
+
+  def call(conn, {:error, :token_invalido}) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> json(%{errors: %{detail: "link de redefinição inválido ou expirado"}})
   end
 
   def call(conn, {:error, :not_found}) do

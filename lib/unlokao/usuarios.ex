@@ -43,11 +43,15 @@ defmodule Unlokao.Usuarios do
   end
 
   @doc """
-  Desativa um usuário.
+  Desativa um usuário. `ator` é quem está fazendo a exclusão: ninguém exclui a si mesmo.
+  As sessões do usuário deixam de valer porque só usuários ativos são autenticados.
 
   TODO (épico de empréstimo): bloquear quando o usuário tiver chave não devolvida.
   """
-  def delete_usuario(%Usuario{} = usuario) do
+  def delete_usuario(%Usuario{id: id}, %Usuario{id: id}),
+    do: {:error, {:unprocessable, "você não pode excluir o próprio usuário"}}
+
+  def delete_usuario(%Usuario{} = usuario, %Usuario{} = _ator) do
     usuario
     |> Usuario.delete_changeset()
     |> Repo.update()

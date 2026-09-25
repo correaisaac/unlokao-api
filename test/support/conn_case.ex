@@ -35,4 +35,16 @@ defmodule UnlokaoWeb.ConnCase do
     Unlokao.DataCase.setup_sandbox(tags)
     {:ok, conn: Phoenix.ConnTest.build_conn()}
   end
+
+  @doc "Faz a requisição como `usuario`, com um token de sessão válido."
+  def autenticar(conn, usuario) do
+    token = Unlokao.Autenticacao.criar_token_de_sessao(usuario)
+    Plug.Conn.put_req_header(conn, "authorization", "Bearer " <> token)
+  end
+
+  @doc "Setup para testes que precisam de um admin logado. Use com `setup :autenticar_admin`."
+  def autenticar_admin(%{conn: conn}) do
+    admin = Unlokao.UsuariosFixtures.usuario_fixture(perfil: :admin)
+    %{conn: autenticar(conn, admin), admin: admin}
+  end
 end

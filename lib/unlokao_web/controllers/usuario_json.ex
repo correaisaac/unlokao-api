@@ -9,8 +9,8 @@ defmodule UnlokaoWeb.UsuarioJSON do
     %{data: data(usuario)}
   end
 
-  # A senha (e o hash dela) nunca sai da API.
-  defp data(%Usuario{} = usuario) do
+  @doc "A senha (e o hash dela) nunca sai da API."
+  def data(%Usuario{} = usuario) do
     %{
       id: usuario.id,
       nome: usuario.nome,
