@@ -57,6 +57,42 @@ if config_env() == :prod do
 
   config :unlokao, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
+  if origens = System.get_env("CORS_ORIGINS") do
+    config :unlokao,
+           :cors_origens,
+           origens |> String.split(",", trim: true) |> Enum.map(&String.trim/1)
+  end
+
+  if url = System.get_env("URL_REDEFINIR_SENHA") do
+    config :unlokao, :url_redefinir_senha, url
+  end
+
+  if remetente = System.get_env("EMAIL_REMETENTE") do
+    config :unlokao, :email_remetente, {"Unlokao", remetente}
+  end
+
+  # E-mail por SMTP (#27). Sem SMTP_HOST, os e-mails só aparecem no log.
+  if smtp_host = System.get_env("SMTP_HOST") do
+    porta = String.to_integer(System.get_env("SMTP_PORT") || "587")
+
+    config :unlokao, Unlokao.Mailer,
+      adapter: Swoosh.Adapters.SMTP,
+      relay: smtp_host,
+      port: porta,
+      username: System.get_env("SMTP_USUARIO"),
+      password: System.get_env("SMTP_SENHA"),
+      auth: :always,
+      # 465 usa SSL direto; as outras portas (587) usam STARTTLS
+      ssl: porta == 465,
+      tls: if(porta == 465, do: :never, else: :always),
+      tls_options: [
+        verify: :verify_peer,
+        cacerts: :public_key.cacerts_get(),
+        server_name_indication: String.to_charlist(smtp_host),
+        depth: 99
+      ]
+  end
+
   config :unlokao, UnlokaoWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
     http: [

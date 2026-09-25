@@ -15,11 +15,18 @@ defmodule UnlokaoWeb.UsuarioControllerTest do
     {:ok, conn: put_req_header(conn, "accept", "application/json")}
   end
 
+  setup :autenticar_admin
+
   test "GET /api/usuarios lista sem expor senha", %{conn: conn} do
     usuario_fixture()
-    assert [usuario] = conn |> get(~p"/api/usuarios") |> json_response(200) |> Map.fetch!("data")
-    refute Map.has_key?(usuario, "senha")
-    refute Map.has_key?(usuario, "senha_hash")
+    usuarios = conn |> get(~p"/api/usuarios") |> json_response(200) |> Map.fetch!("data")
+
+    assert length(usuarios) == 2, "o usuário criado e o admin logado"
+
+    for usuario <- usuarios do
+      refute Map.has_key?(usuario, "senha")
+      refute Map.has_key?(usuario, "senha_hash")
+    end
   end
 
   describe "POST /api/usuarios" do
@@ -62,5 +69,13 @@ defmodule UnlokaoWeb.UsuarioControllerTest do
     usuario = usuario_fixture()
     assert response(delete(conn, ~p"/api/usuarios/#{usuario}"), 204)
     assert json_response(get(conn, ~p"/api/usuarios/#{usuario}"), 404)
+  end
+
+  test "DELETE /api/usuarios/:id retorna 422 quando o admin tenta excluir a si mesmo",
+       %{conn: conn, admin: admin} do
+    conn = delete(conn, ~p"/api/usuarios/#{admin}")
+
+    assert %{"detail" => "você não pode excluir o próprio usuário"} =
+             json_response(conn, 422)["errors"]
   end
 end

@@ -22,6 +22,35 @@ config :unlokao, UnlokaoWeb.Endpoint,
   pubsub_server: Unlokao.PubSub,
   live_view: [signing_salt: "QTCH1H5R"]
 
+# Jobs em segundo plano (Oban). O aviso de atraso roda a cada 15 minutos.
+config :unlokao, Oban,
+  engine: Oban.Engines.Basic,
+  repo: Unlokao.Repo,
+  queues: [default: 10],
+  plugins: [
+    Oban.Plugins.Pruner,
+    {Oban.Plugins.Cron, crontab: [{"*/15 * * * *", Unlokao.Emprestimos.AvisarAtrasos}]}
+  ]
+
+# E-mails: em dev só aparecem no log. Em prod, trocar o adapter
+# pelo provedor escolhido (ver https://hexdocs.pm/swoosh).
+config :unlokao, Unlokao.Mailer, adapter: Swoosh.Adapters.Logger
+config :swoosh, :api_client, false
+
+config :unlokao,
+  email_remetente: {"Unlokao", "nao-responda@unlokao.local"},
+  # Página do front que recebe `?token=...` para redefinir a senha
+  url_redefinir_senha: "http://localhost:5173/redefinir-senha",
+  # Prazo de devolução quando o empréstimo é registrado sem `prazo`
+  prazo_padrao_em_horas: 4,
+  # Origens que podem chamar a API pelo navegador (CORS)
+  cors_origens: ["http://localhost:5173"],
+  # Máximo de chamadas por IP em cada janela: {máximo, janela em ms}
+  limites_de_tentativas: [
+    login: {10, :timer.minutes(1)},
+    esqueci_senha: {5, :timer.hours(1)}
+  ]
+
 # Configure Elixir's Logger
 config :logger, :default_formatter,
   format: "$time $metadata[$level] $message\n",

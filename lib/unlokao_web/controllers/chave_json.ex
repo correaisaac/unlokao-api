@@ -1,8 +1,8 @@
 defmodule UnlokaoWeb.ChaveJSON do
   alias Unlokao.Chaves.Chave
 
-  def index(%{chaves: chaves}) do
-    %{data: for(chave <- chaves, do: data(chave))}
+  def index(%{pagina: pagina}) do
+    UnlokaoWeb.PaginacaoJSON.render(pagina, &data/1)
   end
 
   def show(%{chave: chave}) do

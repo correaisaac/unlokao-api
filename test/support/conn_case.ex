@@ -35,4 +35,29 @@ defmodule UnlokaoWeb.ConnCase do
     Unlokao.DataCase.setup_sandbox(tags)
     {:ok, conn: Phoenix.ConnTest.build_conn()}
   end
+
+  @doc """
+  Confere que a resposta (status e corpo) está descrita na documentação OpenAPI
+  da rota que a gerou. Devolve o `conn` para encadear.
+  """
+  def assert_documentado(conn) do
+    # Pela tabela de rotas, porque quando um plug do pipeline interrompe a
+    # requisição (401, 403, 429) o controller nem chega a ser chamado.
+    %{plug: controller, plug_opts: action} =
+      Phoenix.Router.route_info(UnlokaoWeb.Router, conn.method, conn.request_path, conn.host)
+
+    OpenApiSpex.TestAssertions.assert_operation_response(conn, "#{inspect(controller)}.#{action}")
+  end
+
+  @doc "Faz a requisição como `usuario`, com um token de sessão válido."
+  def autenticar(conn, usuario) do
+    token = Unlokao.Autenticacao.criar_token_de_sessao(usuario)
+    Plug.Conn.put_req_header(conn, "authorization", "Bearer " <> token)
+  end
+
+  @doc "Setup para testes que precisam de um admin logado. Use com `setup :autenticar_admin`."
+  def autenticar_admin(%{conn: conn}) do
+    admin = Unlokao.UsuariosFixtures.usuario_fixture(perfil: :admin)
+    %{conn: autenticar(conn, admin), admin: admin}
+  end
 end

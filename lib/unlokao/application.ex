@@ -12,8 +12,8 @@ defmodule Unlokao.Application do
       Unlokao.Repo,
       {DNSCluster, query: Application.get_env(:unlokao, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Unlokao.PubSub},
-      # Start a worker by calling: Unlokao.Worker.start_link(arg)
-      # {Unlokao.Worker, arg},
+      {Oban, Application.fetch_env!(:unlokao, Oban)},
+      {Unlokao.Limitador, clean_period: :timer.minutes(10)},
       # Start to serve requests, typically the last entry
       UnlokaoWeb.Endpoint
     ]

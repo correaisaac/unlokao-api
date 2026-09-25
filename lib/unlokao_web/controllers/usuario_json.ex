@@ -1,16 +1,16 @@
 defmodule UnlokaoWeb.UsuarioJSON do
   alias Unlokao.Usuarios.Usuario
 
-  def index(%{usuarios: usuarios}) do
-    %{data: for(usuario <- usuarios, do: data(usuario))}
+  def index(%{pagina: pagina}) do
+    UnlokaoWeb.PaginacaoJSON.render(pagina, &data/1)
   end
 
   def show(%{usuario: usuario}) do
     %{data: data(usuario)}
   end
 
-  # A senha (e o hash dela) nunca sai da API.
-  defp data(%Usuario{} = usuario) do
+  @doc "A senha (e o hash dela) nunca sai da API."
+  def data(%Usuario{} = usuario) do
     %{
       id: usuario.id,
       nome: usuario.nome,
