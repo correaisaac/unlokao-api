@@ -32,6 +32,13 @@ Todas as requisições e respostas são JSON. Os corpos são enviados sem envelo
 Faça login e envie o token recebido em todas as outras requisições:
 `Authorization: Bearer <token>`. O token vale por 7 dias.
 
+Na coluna **Acesso**:
+
+- **logado**: qualquer perfil (usuário comum: `aluno`, `professor`, `servidor`).
+- **guarita**: `guarda` ou `admin`. O guarda entrega e recebe as chaves e consulta usuários para
+  identificar quem retira (pelo QR Code da carteirinha ou pela matrícula).
+- **admin**: só `admin`. Cadastra chaves e usuários (inclusive guardas).
+
 ### Autenticação e minha conta
 
 | Método | Rota | Acesso | Descrição |
@@ -61,23 +68,23 @@ e `emprestada` só muda pelo empréstimo e pela devolução.
 
 | Método | Rota | Acesso | Descrição |
 |---|---|---|---|
-| `GET` | `/api/usuarios` | admin | Lista; filtros `perfil`, `busca` |
-| `GET` | `/api/usuarios/:id` | admin | Detalha |
+| `GET` | `/api/usuarios` | guarita | Lista; filtros `perfil`, `busca` |
+| `GET` | `/api/usuarios/:id` | guarita | Detalha |
 | `POST` | `/api/usuarios` | admin | Cadastra (`nome`, `email`, `matricula`, `perfil`, `senha`) |
 | `PATCH` | `/api/usuarios/:id` | admin | Edita (a senha não muda por aqui) |
 | `DELETE` | `/api/usuarios/:id` | admin | Desativa; não vale para si mesmo nem para quem está com chave |
 
-`perfil`: `aluno` \| `professor` \| `servidor` \| `admin`. A senha é guardada com hash
+`perfil`: `aluno` \| `professor` \| `servidor` \| `guarda` \| `admin`. A senha é guardada com hash
 (PBKDF2) e nunca aparece nas respostas.
 
 ### Empréstimos
 
 | Método | Rota | Acesso | Descrição |
 |---|---|---|---|
-| `GET` | `/api/emprestimos` | admin | Lista; filtros `situacao` (`aberto`, `atrasado`, `devolvido`), `chave_id`, `usuario_id` |
-| `GET` | `/api/emprestimos/:id` | admin | Detalha |
-| `POST` | `/api/emprestimos` | admin | Retirada: `{chave_id, usuario_id, prazo?, observacao?}`; prazo padrão de 4 horas |
-| `POST` | `/api/emprestimos/:id/devolucao` | admin | Devolução; a chave volta a ficar `disponivel` |
+| `GET` | `/api/emprestimos` | guarita | Lista; filtros `situacao` (`aberto`, `atrasado`, `devolvido`), `chave_id`, `usuario_id` |
+| `GET` | `/api/emprestimos/:id` | guarita | Detalha |
+| `POST` | `/api/emprestimos` | guarita | Retirada: `{chave_id, usuario_id, prazo?, observacao?}`; prazo padrão de 4 horas |
+| `POST` | `/api/emprestimos/:id/devolucao` | guarita | Devolução; a chave volta a ficar `disponivel` |
 
 Uma chave nunca fica em dois empréstimos abertos, nem com retiradas simultâneas.
 A cada 15 minutos, quem está atrasado recebe um aviso por e-mail (uma vez por empréstimo).
@@ -92,7 +99,7 @@ Toda listagem aceita `pagina` (padrão 1) e `por_pagina` (padrão 20, máx. 100)
 | Status | Quando |
 |---|---|
 | `401` | Sem token, token inválido/expirado, ou e-mail/senha errados no login |
-| `403` | Rota só para administradores |
+| `403` | O perfil logado não tem acesso à rota (ex.: usuário comum em rota da guarita) |
 | `404` | Registro não existe, foi excluído ou o id é inválido |
 | `409` | Valor duplicado, chave indisponível, empréstimo já devolvido, exclusão bloqueada por empréstimo |
 | `422` | Campo obrigatório ausente, valor ou filtro inválido, link de redefinição expirado |

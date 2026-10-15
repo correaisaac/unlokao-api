@@ -6,7 +6,7 @@ defmodule UnlokaoWeb.ApiDoc do
 
   @erros %{
     nao_autenticado: {:unauthorized, "Sem login, token inválido ou expirado"},
-    proibido: {:forbidden, "Rota só para administradores"},
+    proibido: {:forbidden, "O perfil do usuário logado não tem acesso a esta rota"},
     nao_encontrado: {:not_found, "Registro não existe, foi excluído ou o id é inválido"},
     conflito: {:conflict, "Valor duplicado ou conflito com o estado atual"},
     validacao: {:unprocessable_entity, "Campo obrigatório ausente ou valor inválido"},
@@ -21,7 +21,7 @@ defmodule UnlokaoWeb.ApiDoc do
     end
   end
 
-  @doc "Erros de toda rota de admin, somados aos `extras`."
+  @doc "Erros de toda rota restrita a um perfil (admin ou guarita), somados aos `extras`."
   def erros_admin(extras \\ []), do: erros([:nao_autenticado, :proibido | extras])
 
   def json(descricao, schema), do: {descricao, "application/json", schema}

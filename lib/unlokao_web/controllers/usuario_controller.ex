@@ -13,7 +13,7 @@ defmodule UnlokaoWeb.UsuarioController do
 
   operation(:index,
     summary: "Lista os usuários ativos",
-    description: "Só admin.",
+    description: "Admin ou guarda (para identificar quem retira uma chave).",
     parameters:
       ApiDoc.paginacao(
         perfil: ApiDoc.filtro("Perfil", %Schema{type: :string, enum: Schemas.Base.perfis()}),
@@ -49,7 +49,7 @@ defmodule UnlokaoWeb.UsuarioController do
 
   operation(:show,
     summary: "Detalha um usuário",
-    description: "Só admin.",
+    description: "Admin ou guarda (lido pelo QR Code da carteirinha).",
     parameters: ApiDoc.id(),
     responses:
       [ok: ApiDoc.json("Usuário", Schemas.UsuarioResposta)] ++

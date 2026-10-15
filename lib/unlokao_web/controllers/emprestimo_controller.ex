@@ -21,7 +21,7 @@ defmodule UnlokaoWeb.EmprestimoController do
 
   operation(:index,
     summary: "Lista os empréstimos",
-    description: "Só admin. Do mais recente para o mais antigo.",
+    description: "Admin ou guarda. Do mais recente para o mais antigo.",
     parameters:
       ApiDoc.paginacao(
         @filtros ++
@@ -61,8 +61,8 @@ defmodule UnlokaoWeb.EmprestimoController do
   operation(:create,
     summary: "Registra a retirada de uma chave",
     description: """
-    Só admin. A chave precisa estar `disponivel` e passa para `emprestada`;
-    o admin logado fica como quem entregou.
+    Admin ou guarda. A chave precisa estar `disponivel` e passa para `emprestada`;
+    quem está logado fica como quem entregou.
     """,
     request_body: ApiDoc.corpo(Schemas.EmprestimoEntrada),
     responses:
@@ -81,7 +81,7 @@ defmodule UnlokaoWeb.EmprestimoController do
 
   operation(:show,
     summary: "Detalha um empréstimo",
-    description: "Só admin.",
+    description: "Admin ou guarda.",
     parameters: ApiDoc.id(),
     responses:
       [ok: ApiDoc.json("Empréstimo", Schemas.EmprestimoResposta)] ++
@@ -97,7 +97,7 @@ defmodule UnlokaoWeb.EmprestimoController do
   operation(:devolver,
     summary: "Registra a devolução",
     description:
-      "Só admin. A chave volta a ficar `disponivel`; o admin logado fica como quem recebeu.",
+      "Admin ou guarda. A chave volta a ficar `disponivel`; quem está logado fica como quem recebeu.",
     parameters: ApiDoc.id("Id do empréstimo"),
     responses:
       [ok: ApiDoc.json("Empréstimo devolvido", Schemas.EmprestimoResposta)] ++

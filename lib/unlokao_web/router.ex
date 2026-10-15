@@ -13,6 +13,11 @@ defmodule UnlokaoWeb.Router do
     plug :exigir_autenticacao
   end
 
+  pipeline :guarita do
+    plug :exigir_autenticacao
+    plug :exigir_guarita
+  end
+
   pipeline :admin do
     plug :exigir_autenticacao
     plug :exigir_admin
@@ -70,14 +75,22 @@ defmodule UnlokaoWeb.Router do
     resources "/chaves", ChaveController, only: [:index, :show]
   end
 
+  # Guarita (admin ou guarda): entrega e recebe chaves. Consulta usuários para
+  # identificar quem retira (pelo QR Code da carteirinha ou pela matrícula).
+  scope "/api", UnlokaoWeb do
+    pipe_through [:api, :guarita]
+
+    resources "/usuarios", UsuarioController, only: [:index, :show]
+
+    resources "/emprestimos", EmprestimoController, only: [:index, :show, :create]
+    post "/emprestimos/:id/devolucao", EmprestimoController, :devolver
+  end
+
   # Só administradores
   scope "/api", UnlokaoWeb do
     pipe_through [:api, :admin]
 
     resources "/chaves", ChaveController, only: [:create, :update, :delete]
-    resources "/usuarios", UsuarioController, except: [:new, :edit]
-
-    resources "/emprestimos", EmprestimoController, only: [:index, :show, :create]
-    post "/emprestimos/:id/devolucao", EmprestimoController, :devolver
+    resources "/usuarios", UsuarioController, only: [:create, :update, :delete]
   end
 end

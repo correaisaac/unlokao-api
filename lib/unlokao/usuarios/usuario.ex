@@ -9,7 +9,7 @@ defmodule Unlokao.Usuarios.Usuario do
     field :email, :string
     field :matricula, :string
     field :telefone, :string
-    field :perfil, Ecto.Enum, values: [:aluno, :professor, :servidor, :admin]
+    field :perfil, Ecto.Enum, values: [:aluno, :professor, :servidor, :guarda, :admin]
     field :senha, :string, virtual: true, redact: true
     field :senha_hash, :string, redact: true
     field :ativo, :boolean, default: true
