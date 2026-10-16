@@ -260,6 +260,12 @@ defmodule UnlokaoWeb.Schemas do
         usuario: UnlokaoWeb.Schemas.Pessoa,
         entregue_por: UnlokaoWeb.Schemas.Pessoa,
         recebido_por: %Schema{allOf: [UnlokaoWeb.Schemas.Pessoa], nullable: true},
+        devolvido_por: %Schema{
+          allOf: [UnlokaoWeb.Schemas.Pessoa],
+          nullable: true,
+          description:
+            "Quem devolveu a chave fisicamente, se identificado (pode ser diferente de `usuario`)"
+        },
         retirada_em: %Schema{type: :string, format: :"date-time"},
         prazo: %Schema{type: :string, format: :"date-time"},
         devolvida_em: %Schema{type: :string, format: :"date-time", nullable: true},
@@ -272,6 +278,7 @@ defmodule UnlokaoWeb.Schemas do
         :usuario,
         :entregue_por,
         :recebido_por,
+        :devolvido_por,
         :retirada_em,
         :prazo,
         :devolvida_em,
@@ -296,6 +303,20 @@ defmodule UnlokaoWeb.Schemas do
         observacao: %Schema{type: :string, maxLength: 255}
       },
       required: [:chave_id, :usuario_id]
+    })
+  end
+
+  defmodule EmprestimoDevolucaoEntrada do
+    OpenApiSpex.schema(%{
+      title: "EmprestimoDevolucaoEntrada",
+      type: :object,
+      properties: %{
+        usuario_id: %Schema{
+          type: :string,
+          format: :uuid,
+          description: "Opcional: quem está devolvendo a chave, se for diferente de quem retirou"
+        }
+      }
     })
   end
 

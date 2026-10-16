@@ -96,18 +96,20 @@ defmodule UnlokaoWeb.EmprestimoController do
 
   operation(:devolver,
     summary: "Registra a devolução",
-    description:
-      "Admin ou guarda. A chave volta a ficar `disponivel`; quem está logado fica como quem recebeu.",
+    description: """
+    Admin ou guarda. A chave volta a ficar `disponivel`; quem está logado fica como quem recebeu.
+    """,
     parameters: ApiDoc.id("Id do empréstimo"),
+    request_body: ApiDoc.corpo(Schemas.EmprestimoDevolucaoEntrada, required: false),
     responses:
       [ok: ApiDoc.json("Empréstimo devolvido", Schemas.EmprestimoResposta)] ++
-        ApiDoc.erros_admin([:nao_encontrado, :conflito])
+        ApiDoc.erros_admin([:nao_encontrado, :conflito, :validacao])
   )
 
-  def devolver(conn, %{"id" => id}) do
+  def devolver(conn, %{"id" => id} = params) do
     with {:ok, emprestimo} <- Emprestimos.fetch_emprestimo(id),
          {:ok, emprestimo} <-
-           Emprestimos.registrar_devolucao(emprestimo, conn.assigns.usuario_atual) do
+           Emprestimos.registrar_devolucao(emprestimo, conn.assigns.usuario_atual, params) do
       render(conn, :show, emprestimo: emprestimo)
     end
   end

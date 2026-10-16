@@ -11,7 +11,7 @@ defmodule Unlokao.Emprestimos do
   alias Unlokao.Paginacao
   alias Unlokao.Usuarios.Usuario
 
-  @relacoes [:chave, :usuario, :entregue_por, :recebido_por]
+  @relacoes [:chave, :usuario, :entregue_por, :recebido_por, :devolvido_por]
 
   @doc """
   Lista os empréstimos, do mais recente para o mais antigo, com paginação.
@@ -107,24 +107,37 @@ defmodule Unlokao.Emprestimos do
 
   @doc """
   Registra a devolução (#19) por `admin`. A chave volta a ficar `disponivel`.
+
+  `params` aceita `usuario_id` (opcional): quem está devolvendo a chave fisicamente, se o leitor
+  da guarita também leu o QR Code dessa pessoa. Pode ser diferente de quem retirou. Sem o leitor
+  em 2 passos (ex: etiqueta da chave lida direto), a devolução segue sem essa identificação.
   """
-  def registrar_devolucao(%Emprestimo{} = emprestimo, %Usuario{} = admin) do
+  def registrar_devolucao(%Emprestimo{} = emprestimo, %Usuario{} = admin, params \\ %{}) do
     agora = DateTime.utc_now(:second)
 
     Repo.transaction(fn ->
-      # Condicional para que duas devoluções simultâneas não passem as duas.
-      {devolvidos, _} =
-        from(e in Emprestimo, where: e.id == ^emprestimo.id and is_nil(e.devolvida_em))
-        |> Repo.update_all(
-          set: [devolvida_em: agora, recebido_por_id: admin.id, updated_at: agora]
-        )
+      with {:ok, devolvido_por_id} <- devolvido_por_id(params) do
+        # Condicional para que duas devoluções simultâneas não passem as duas.
+        {devolvidos, _} =
+          from(e in Emprestimo, where: e.id == ^emprestimo.id and is_nil(e.devolvida_em))
+          |> Repo.update_all(
+            set: [
+              devolvida_em: agora,
+              recebido_por_id: admin.id,
+              devolvido_por_id: devolvido_por_id,
+              updated_at: agora
+            ]
+          )
 
-      if devolvidos == 0, do: Repo.rollback({:conflict, "este empréstimo já foi devolvido"})
+        if devolvidos == 0, do: Repo.rollback({:conflict, "este empréstimo já foi devolvido"})
 
-      from(c in Chave, where: c.id == ^emprestimo.chave_id)
-      |> Repo.update_all(set: [status: :disponivel, updated_at: agora])
+        from(c in Chave, where: c.id == ^emprestimo.chave_id)
+        |> Repo.update_all(set: [status: :disponivel, updated_at: agora])
 
-      Emprestimo |> Repo.get!(emprestimo.id) |> Repo.preload(@relacoes)
+        Emprestimo |> Repo.get!(emprestimo.id) |> Repo.preload(@relacoes)
+      else
+        {:error, erro} -> Repo.rollback(erro)
+      end
     end)
   end
 
@@ -153,6 +166,23 @@ defmodule Unlokao.Emprestimos do
     if Repo.exists?(from u in Usuario, where: u.id == ^usuario_id and u.ativo),
       do: :ok,
       else: {:error, Ecto.Changeset.add_error(changeset, :usuario_id, "não encontrado")}
+  end
+
+  # `usuario_id` da devolução (#19): quem está devolvendo a chave, se identificado. Sem ele, a
+  # devolução segue normalmente (ex: etiqueta da chave lida direto, sem o leitor em 2 passos).
+  defp devolvido_por_id(params) do
+    case params[:usuario_id] || params["usuario_id"] do
+      nil ->
+        {:ok, nil}
+
+      usuario_id ->
+        with {:ok, uuid} <- Ecto.UUID.cast(usuario_id),
+             true <- Repo.exists?(from u in Usuario, where: u.id == ^uuid and u.ativo) do
+          {:ok, uuid}
+        else
+          _ -> {:error, {:unprocessable, "quem está devolvendo a chave não foi encontrado"}}
+        end
+    end
   end
 
   # UPDATE condicional: se duas retiradas da mesma chave chegarem juntas, o

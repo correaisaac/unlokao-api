@@ -70,6 +70,31 @@ defmodule UnlokaoWeb.EmprestimoControllerTest do
                404
              )
     end
+
+    test "aceita usuario_id de quem devolveu, diferente de quem retirou", %{
+      conn: conn,
+      admin: admin
+    } do
+      emprestimo = emprestimo_fixture(admin: admin)
+      colega = usuario_fixture()
+
+      resposta =
+        conn
+        |> post(~p"/api/emprestimos/#{emprestimo}/devolucao", usuario_id: colega.id)
+        |> json_response(200)
+
+      assert resposta["data"]["devolvido_por"]["id"] == colega.id
+      assert resposta["data"]["usuario"]["id"] == emprestimo.usuario.id
+    end
+
+    test "422 com usuario_id de quem devolveu inexistente", %{conn: conn, admin: admin} do
+      emprestimo = emprestimo_fixture(admin: admin)
+
+      conn =
+        post(conn, ~p"/api/emprestimos/#{emprestimo}/devolucao", usuario_id: Ecto.UUID.generate())
+
+      assert json_response(conn, 422)["errors"]["detail"]
+    end
   end
 
   describe "consultas (#20)" do

@@ -84,10 +84,16 @@ e `emprestada` só muda pelo empréstimo e pela devolução.
 | `GET` | `/api/emprestimos` | guarita | Lista; filtros `situacao` (`aberto`, `atrasado`, `devolvido`), `chave_id`, `usuario_id` |
 | `GET` | `/api/emprestimos/:id` | guarita | Detalha |
 | `POST` | `/api/emprestimos` | guarita | Retirada: `{chave_id, usuario_id, prazo?, observacao?}`; prazo padrão de 4 horas |
-| `POST` | `/api/emprestimos/:id/devolucao` | guarita | Devolução; a chave volta a ficar `disponivel` |
+| `POST` | `/api/emprestimos/:id/devolucao` | guarita | Devolução: `{usuario_id?}`; a chave volta a ficar `disponivel` |
 
 Uma chave nunca fica em dois empréstimos abertos, nem com retiradas simultâneas.
 A cada 15 minutos, quem está atrasado recebe um aviso por e-mail (uma vez por empréstimo).
+
+Quem retirou (`usuario`) nunca muda durante o empréstimo. Na devolução, `usuario_id` é opcional e
+identifica quem está devolvendo a chave fisicamente, se for diferente de quem retirou (ex: um
+colega devolve no lugar da pessoa) — vira `devolvido_por` na resposta. Sem ele, a devolução segue
+normalmente e `devolvido_por` fica `null`. `recebido_por` continua sendo sempre o guarda/admin
+logado que processou a devolução, não quem trouxe a chave de volta.
 
 ### Paginação
 
