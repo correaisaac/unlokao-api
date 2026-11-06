@@ -91,6 +91,7 @@ defmodule UnlokaoWeb.Router do
     pipe_through [:api, :guarita]
 
     resources "/usuarios", UsuarioController, only: [:index, :show]
+    get "/chaves/:chave_id/autorizacoes", AutorizacaoController, :index
 
     resources "/emprestimos", EmprestimoController, only: [:index, :show, :create]
     post "/emprestimos/lote", EmprestimoController, :create_lote
@@ -102,6 +103,8 @@ defmodule UnlokaoWeb.Router do
     pipe_through [:api, :admin]
 
     resources "/chaves", ChaveController, only: [:create, :update, :delete]
+    post "/chaves/:chave_id/autorizacoes", AutorizacaoController, :create
+    delete "/chaves/:chave_id/autorizacoes/:id", AutorizacaoController, :delete
     resources "/usuarios", UsuarioController, only: [:create, :update, :delete]
   end
 end

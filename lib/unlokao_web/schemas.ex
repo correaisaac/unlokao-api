@@ -50,10 +50,21 @@ defmodule UnlokaoWeb.Schemas do
         bloco: %Schema{type: :string, nullable: true, example: "B"},
         descricao: %Schema{type: :string, nullable: true, example: "cópia principal"},
         status: %Schema{type: :string, enum: UnlokaoWeb.Schemas.Base.status_chave()},
+        restrita: %Schema{type: :boolean, description: "Só quem está na lista pode retirar"},
         inserted_at: %Schema{type: :string, format: :"date-time"},
         updated_at: %Schema{type: :string, format: :"date-time"}
       },
-      required: [:id, :codigo, :espaco, :bloco, :descricao, :status, :inserted_at, :updated_at]
+      required: [
+        :id,
+        :codigo,
+        :espaco,
+        :bloco,
+        :descricao,
+        :status,
+        :restrita,
+        :inserted_at,
+        :updated_at
+      ]
     })
   end
 
@@ -65,7 +76,8 @@ defmodule UnlokaoWeb.Schemas do
         codigo: %Schema{type: :string, maxLength: 50, example: "LAB-101-A"},
         espaco: %Schema{type: :string, example: "Laboratório 101"},
         bloco: %Schema{type: :string, example: "B"},
-        descricao: %Schema{type: :string, example: "cópia principal"}
+        descricao: %Schema{type: :string, example: "cópia principal"},
+        restrita: %Schema{type: :boolean, default: false}
       },
       required: [:codigo, :espaco]
     })
@@ -81,7 +93,8 @@ defmodule UnlokaoWeb.Schemas do
         espaco: %Schema{type: :string},
         bloco: %Schema{type: :string},
         descricao: %Schema{type: :string},
-        status: %Schema{type: :string, enum: ["disponivel", "indisponivel"]}
+        status: %Schema{type: :string, enum: ["disponivel", "indisponivel"]},
+        restrita: %Schema{type: :boolean}
       }
     })
   end
@@ -368,6 +381,51 @@ defmodule UnlokaoWeb.Schemas do
         }
       }
     })
+  end
+
+  defmodule Autorizacao do
+    OpenApiSpex.schema(%{
+      title: "Autorizacao",
+      description: "Uma pessoa na lista de quem pode retirar uma chave restrita",
+      type: :object,
+      properties: %{
+        id: %Schema{type: :string, format: :uuid},
+        usuario: UnlokaoWeb.Schemas.Pessoa,
+        autorizado_por: %Schema{allOf: [UnlokaoWeb.Schemas.Pessoa], nullable: true},
+        valida_ate: %Schema{type: :string, format: :date, nullable: true},
+        vigente: %Schema{type: :boolean, description: "A data de validade ainda não passou"},
+        inserted_at: %Schema{type: :string, format: :"date-time"}
+      },
+      required: [:id, :usuario, :autorizado_por, :valida_ate, :vigente, :inserted_at]
+    })
+  end
+
+  defmodule AutorizacaoEntrada do
+    OpenApiSpex.schema(%{
+      title: "AutorizacaoEntrada",
+      type: :object,
+      properties: %{
+        usuario_id: %Schema{type: :string, format: :uuid},
+        valida_ate: %Schema{
+          type: :string,
+          format: :date,
+          description: "Opcional: último dia em que a autorização vale"
+        }
+      },
+      required: [:usuario_id]
+    })
+  end
+
+  defmodule AutorizacaoResposta do
+    OpenApiSpex.schema(
+      UnlokaoWeb.Schemas.Base.resposta("AutorizacaoResposta", UnlokaoWeb.Schemas.Autorizacao)
+    )
+  end
+
+  defmodule AutorizacaoLista do
+    OpenApiSpex.schema(
+      UnlokaoWeb.Schemas.Base.lista("AutorizacaoLista", UnlokaoWeb.Schemas.Autorizacao)
+    )
   end
 
   defmodule EmprestimoResposta do

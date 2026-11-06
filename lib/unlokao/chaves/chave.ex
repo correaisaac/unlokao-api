@@ -14,6 +14,8 @@ defmodule Unlokao.Chaves.Chave do
       values: [:disponivel, :emprestada, :indisponivel],
       default: :disponivel
 
+    # Restrita: só quem está na lista de autorizações pode retirar.
+    field :restrita, :boolean, default: false
     field :ativo, :boolean, default: true
 
     timestamps(type: :utc_datetime)
@@ -22,14 +24,14 @@ defmodule Unlokao.Chaves.Chave do
   @doc "Cadastro de uma chave nova (#2). Toda chave nasce `disponivel`."
   def create_changeset(chave, attrs) do
     chave
-    |> cast(attrs, [:codigo, :espaco, :bloco, :descricao])
+    |> cast(attrs, [:codigo, :espaco, :bloco, :descricao, :restrita])
     |> validar_campos()
   end
 
   @doc "Edição de uma chave (#3)."
   def update_changeset(chave, attrs) do
     chave
-    |> cast(attrs, [:codigo, :espaco, :bloco, :descricao, :status])
+    |> cast(attrs, [:codigo, :espaco, :bloco, :descricao, :status, :restrita])
     |> validar_campos()
     |> validar_mudanca_de_status()
   end

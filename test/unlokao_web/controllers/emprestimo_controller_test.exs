@@ -115,6 +115,80 @@ defmodule UnlokaoWeb.EmprestimoControllerTest do
     end
   end
 
+  describe "chaves restritas" do
+    setup do
+      %{chave: chave_fixture(restrita: true), usuario: usuario_fixture()}
+    end
+
+    test "422 para quem não está na lista", %{conn: conn, chave: chave, usuario: usuario} do
+      resposta = post(conn, ~p"/api/emprestimos", chave_id: chave.id, usuario_id: usuario.id)
+
+      assert %{"detail" => detalhe} = json_response(resposta, 422)["errors"]
+      assert detalhe =~ usuario.nome and detalhe =~ chave.codigo
+
+      assert %{"status" => "disponivel"} =
+               json_response(get(conn, ~p"/api/chaves/#{chave}"), 200)["data"]
+    end
+
+    test "201 para quem está na lista", ctx do
+      %{conn: conn, chave: chave, usuario: usuario, admin: admin} = ctx
+      {:ok, _} = Unlokao.Chaves.autorizar(chave, %{usuario_id: usuario.id}, admin)
+
+      resposta = post(conn, ~p"/api/emprestimos", chave_id: chave.id, usuario_id: usuario.id)
+      assert json_response(resposta, 201)
+    end
+
+    test "autorização vencida não vale, e a do último dia vale", ctx do
+      %{conn: conn, chave: chave, usuario: usuario, admin: admin} = ctx
+      hoje = Date.utc_today()
+
+      {:ok, autorizacao} =
+        Unlokao.Chaves.autorizar(
+          chave,
+          %{usuario_id: usuario.id, valida_ate: Date.add(hoje, -1)},
+          admin
+        )
+
+      resposta = post(conn, ~p"/api/emprestimos", chave_id: chave.id, usuario_id: usuario.id)
+      assert json_response(resposta, 422)
+
+      autorizacao |> Ecto.Changeset.change(valida_ate: hoje) |> Unlokao.Repo.update!()
+
+      resposta = post(conn, ~p"/api/emprestimos", chave_id: chave.id, usuario_id: usuario.id)
+      assert json_response(resposta, 201)
+    end
+
+    test "o admin também precisa estar na lista", %{conn: conn, chave: chave, admin: admin} do
+      resposta = post(conn, ~p"/api/emprestimos", chave_id: chave.id, usuario_id: admin.id)
+      assert json_response(resposta, 422)
+    end
+
+    test "no lote, uma chave proibida barra todas", %{conn: conn, chave: chave, usuario: usuario} do
+      livre = chave_fixture()
+
+      resposta =
+        post(conn, ~p"/api/emprestimos/lote",
+          chave_ids: [livre.id, chave.id],
+          usuario_id: usuario.id
+        )
+
+      assert %{"detail" => detalhe} = json_response(resposta, 422)["errors"]
+      assert detalhe =~ chave.codigo
+
+      assert %{"status" => "disponivel"} =
+               json_response(get(conn, ~p"/api/chaves/#{livre}"), 200)["data"]
+    end
+
+    test "devolver não depende da lista", ctx do
+      %{conn: conn, chave: chave, usuario: usuario, admin: admin} = ctx
+      {:ok, autorizacao} = Unlokao.Chaves.autorizar(chave, %{usuario_id: usuario.id}, admin)
+      emprestimo = emprestimo_fixture(admin: admin, chave_id: chave.id, usuario_id: usuario.id)
+      {:ok, _} = Unlokao.Chaves.remover_autorizacao(chave, autorizacao.id)
+
+      assert json_response(post(conn, ~p"/api/emprestimos/#{emprestimo}/devolucao"), 200)
+    end
+  end
+
   describe "POST /api/emprestimos/:id/devolucao (#19)" do
     test "200 e a chave volta a ficar disponível", %{conn: conn, admin: admin} do
       emprestimo = emprestimo_fixture(admin: admin)

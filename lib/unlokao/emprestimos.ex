@@ -6,6 +6,7 @@ defmodule Unlokao.Emprestimos do
   import Ecto.Query, warn: false
   alias Unlokao.Repo
 
+  alias Unlokao.Chaves
   alias Unlokao.Chaves.Chave
   alias Unlokao.Emprestimos.{Emprestimo, Notificador}
   alias Unlokao.Paginacao
@@ -82,7 +83,8 @@ defmodule Unlokao.Emprestimos do
   @doc """
   Registra a retirada de uma chave (#18) por `admin`.
 
-  A chave precisa estar ativa e `disponivel`, e o usuário, ativo. A chave passa
+  A chave precisa estar ativa e `disponivel`, e o usuário, ativo e autorizado
+  quando a chave for restrita. A chave passa
   para `emprestada` na mesma transação.
   """
   def registrar_emprestimo(attrs, %Usuario{} = admin) do
@@ -198,6 +200,7 @@ defmodule Unlokao.Emprestimos do
 
     with {:ok, dados} <- Ecto.Changeset.apply_action(changeset, :insert),
          :ok <- verificar_usuario(dados.usuario_id, changeset),
+         :ok <- verificar_autorizacao(dados),
          :ok <- reservar_chave(dados.chave_id, agora, changeset),
          {:ok, emprestimo} <- Repo.insert(changeset) do
       {:ok, Repo.preload(emprestimo, @relacoes)}
@@ -212,6 +215,18 @@ defmodule Unlokao.Emprestimos do
     if Repo.exists?(from u in Usuario, where: u.id == ^usuario_id and u.ativo),
       do: :ok,
       else: {:error, Ecto.Changeset.add_error(changeset, :usuario_id, "não encontrado")}
+  end
+
+  defp verificar_autorizacao(%Emprestimo{chave_id: chave_id, usuario_id: usuario_id}) do
+    if Chaves.pode_retirar?(chave_id, usuario_id) do
+      :ok
+    else
+      nome = Repo.one(from u in Usuario, where: u.id == ^usuario_id, select: u.nome)
+
+      {:error,
+       {:unprocessable,
+        "#{nome} não tem autorização para retirar a chave #{codigo_da_chave(chave_id)}"}}
+    end
   end
 
   # `usuario_id` da devolução (#19): quem está devolvendo a chave, se identificado. Sem ele, a

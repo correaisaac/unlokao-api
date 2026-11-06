@@ -35,3 +35,7 @@ cond do
         raise "Seed: não foi possível criar o admin: #{inspect(erros)}"
     end
 end
+
+if Code.ensure_loaded?(Mix) and Mix.env() == :dev do
+  Code.eval_file(Path.join(__DIR__, "seeds_demonstracao.exs"))
+end

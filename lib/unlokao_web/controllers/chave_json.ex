@@ -17,6 +17,7 @@ defmodule UnlokaoWeb.ChaveJSON do
       bloco: chave.bloco,
       descricao: chave.descricao,
       status: chave.status,
+      restrita: chave.restrita,
       inserted_at: chave.inserted_at,
       updated_at: chave.updated_at
     }
