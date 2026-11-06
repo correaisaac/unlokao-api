@@ -68,6 +68,40 @@ defmodule UnlokaoWeb.AutenticacaoControllerTest do
       assert json_response(patch(conn, ~p"/api/chaves/#{chave}", espaco: "Y"), 403)
       assert json_response(delete(conn, ~p"/api/chaves/#{chave}"), 403)
       assert json_response(get(conn, ~p"/api/usuarios"), 403)
+      assert json_response(get(conn, ~p"/api/emprestimos"), 403)
+    end
+
+    test "guarda entrega e recebe chaves e consulta usuários, mas não gerencia cadastros", %{
+      conn: conn
+    } do
+      chave = chave_fixture()
+      usuario = usuario_fixture()
+      guarda = usuario_fixture(perfil: :guarda)
+      conn = autenticar(conn, guarda)
+
+      assert json_response(get(conn, ~p"/api/usuarios"), 200)
+      assert %{"id" => id} = json_response(get(conn, ~p"/api/usuarios/#{usuario}"), 200)["data"]
+      assert id == usuario.id
+
+      emprestimo =
+        conn
+        |> post(~p"/api/emprestimos", chave_id: chave.id, usuario_id: usuario.id)
+        |> json_response(201)
+        |> Map.fetch!("data")
+
+      assert emprestimo["entregue_por"]["id"] == guarda.id
+      assert json_response(get(conn, ~p"/api/emprestimos"), 200)
+
+      devolvido =
+        conn |> post(~p"/api/emprestimos/#{emprestimo["id"]}/devolucao") |> json_response(200)
+
+      assert devolvido["data"]["recebido_por"]["id"] == guarda.id
+
+      assert json_response(post(conn, ~p"/api/chaves", codigo: "X", espaco: "Y"), 403)
+      assert json_response(patch(conn, ~p"/api/chaves/#{chave}", espaco: "Y"), 403)
+      assert json_response(post(conn, ~p"/api/usuarios", %{}), 403)
+      assert json_response(patch(conn, ~p"/api/usuarios/#{usuario}", nome: "Outro"), 403)
+      assert json_response(delete(conn, ~p"/api/usuarios/#{usuario}"), 403)
     end
 
     test "GET /api/me retorna o usuário logado", %{conn: conn} do

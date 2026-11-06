@@ -13,6 +13,11 @@ defmodule UnlokaoWeb.Router do
     plug :exigir_autenticacao
   end
 
+  pipeline :guarita do
+    plug :exigir_autenticacao
+    plug :exigir_guarita
+  end
+
   pipeline :admin do
     plug :exigir_autenticacao
     plug :exigir_admin
@@ -38,6 +43,10 @@ defmodule UnlokaoWeb.Router do
     plug UnlokaoWeb.LimiteDeTentativas, :esqueci_senha
   end
 
+  pipeline :limite_cadastro do
+    plug UnlokaoWeb.LimiteDeTentativas, :cadastro
+  end
+
   # Rotas públicas
   scope "/api", UnlokaoWeb do
     pipe_through [:api, :limite_login]
@@ -49,6 +58,12 @@ defmodule UnlokaoWeb.Router do
     pipe_through [:api, :limite_esqueci_senha]
 
     post "/senha/esqueci", SenhaController, :esqueci
+  end
+
+  scope "/api", UnlokaoWeb do
+    pipe_through [:api, :limite_cadastro]
+
+    post "/cadastro", UsuarioController, :cadastrar
   end
 
   scope "/api", UnlokaoWeb do
@@ -70,14 +85,26 @@ defmodule UnlokaoWeb.Router do
     resources "/chaves", ChaveController, only: [:index, :show]
   end
 
+  # Guarita (admin ou guarda): entrega e recebe chaves. Consulta usuários para
+  # identificar quem retira (pelo QR Code da carteirinha ou pela matrícula).
+  scope "/api", UnlokaoWeb do
+    pipe_through [:api, :guarita]
+
+    resources "/usuarios", UsuarioController, only: [:index, :show]
+    get "/chaves/:chave_id/autorizacoes", AutorizacaoController, :index
+
+    resources "/emprestimos", EmprestimoController, only: [:index, :show, :create]
+    post "/emprestimos/lote", EmprestimoController, :create_lote
+    post "/emprestimos/:id/devolucao", EmprestimoController, :devolver
+  end
+
   # Só administradores
   scope "/api", UnlokaoWeb do
     pipe_through [:api, :admin]
 
     resources "/chaves", ChaveController, only: [:create, :update, :delete]
-    resources "/usuarios", UsuarioController, except: [:new, :edit]
-
-    resources "/emprestimos", EmprestimoController, only: [:index, :show, :create]
-    post "/emprestimos/:id/devolucao", EmprestimoController, :devolver
+    post "/chaves/:chave_id/autorizacoes", AutorizacaoController, :create
+    delete "/chaves/:chave_id/autorizacoes/:id", AutorizacaoController, :delete
+    resources "/usuarios", UsuarioController, only: [:create, :update, :delete]
   end
 end

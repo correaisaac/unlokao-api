@@ -46,6 +46,18 @@ defmodule UnlokaoWeb.OpenApiTest do
       %{admin: admin, conn: autenticar(conn, admin)}
     end
 
+    test "lista de autorizações da chave", %{conn: conn} do
+      chave = chave_fixture(restrita: true)
+      usuario = usuario_fixture()
+
+      criada = post(conn, ~p"/api/chaves/#{chave}/autorizacoes", usuario_id: usuario.id)
+      assert_documentado(criada)
+      id = json_response(criada, 201)["data"]["id"]
+
+      conn |> get(~p"/api/chaves/#{chave}/autorizacoes") |> assert_documentado()
+      conn |> delete(~p"/api/chaves/#{chave}/autorizacoes/#{id}") |> assert_documentado()
+    end
+
     test "autenticação e minha conta", %{admin: admin} do
       usuario = usuario_fixture()
       publico = build_conn()
@@ -71,6 +83,17 @@ defmodule UnlokaoWeb.OpenApiTest do
       logado |> post(~p"/api/logout") |> assert_documentado()
 
       publico |> post(~p"/api/senha/esqueci", email: admin.email) |> assert_documentado()
+
+      publico
+      |> post(~p"/api/cadastro",
+        nome: "Maria Silva",
+        email: "maria@universidade.edu.br",
+        matricula: "20231234",
+        perfil: "aluno",
+        senha: @senha
+      )
+      |> assert_documentado()
+
       assert_email_sent()
 
       publico

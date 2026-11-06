@@ -12,6 +12,9 @@ defmodule Unlokao.Emprestimos.Emprestimo do
     belongs_to :usuario, Usuario
     belongs_to :entregue_por, Usuario
     belongs_to :recebido_por, Usuario
+    # Quem devolveu a chave fisicamente (opcional; pode ser diferente de quem retirou).
+    # `recebido_por` é sempre o guarda/admin que processou a devolução.
+    belongs_to :devolvido_por, Usuario
 
     field :retirada_em, :utc_datetime
     field :prazo, :utc_datetime

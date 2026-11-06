@@ -9,6 +9,10 @@ defmodule UnlokaoWeb.EmprestimoJSON do
     %{data: data(emprestimo)}
   end
 
+  def lote(%{emprestimos: emprestimos}) do
+    %{data: Enum.map(emprestimos, &data/1)}
+  end
+
   defp data(%Emprestimo{} = emprestimo) do
     %{
       id: emprestimo.id,
@@ -21,6 +25,7 @@ defmodule UnlokaoWeb.EmprestimoJSON do
       usuario: pessoa(emprestimo.usuario),
       entregue_por: pessoa(emprestimo.entregue_por),
       recebido_por: pessoa(emprestimo.recebido_por),
+      devolvido_por: pessoa(emprestimo.devolvido_por),
       retirada_em: emprestimo.retirada_em,
       prazo: emprestimo.prazo,
       devolvida_em: emprestimo.devolvida_em,

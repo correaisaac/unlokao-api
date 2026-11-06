@@ -50,10 +50,21 @@ defmodule UnlokaoWeb.Schemas do
         bloco: %Schema{type: :string, nullable: true, example: "B"},
         descricao: %Schema{type: :string, nullable: true, example: "cópia principal"},
         status: %Schema{type: :string, enum: UnlokaoWeb.Schemas.Base.status_chave()},
+        restrita: %Schema{type: :boolean, description: "Só quem está na lista pode retirar"},
         inserted_at: %Schema{type: :string, format: :"date-time"},
         updated_at: %Schema{type: :string, format: :"date-time"}
       },
-      required: [:id, :codigo, :espaco, :bloco, :descricao, :status, :inserted_at, :updated_at]
+      required: [
+        :id,
+        :codigo,
+        :espaco,
+        :bloco,
+        :descricao,
+        :status,
+        :restrita,
+        :inserted_at,
+        :updated_at
+      ]
     })
   end
 
@@ -65,7 +76,8 @@ defmodule UnlokaoWeb.Schemas do
         codigo: %Schema{type: :string, maxLength: 50, example: "LAB-101-A"},
         espaco: %Schema{type: :string, example: "Laboratório 101"},
         bloco: %Schema{type: :string, example: "B"},
-        descricao: %Schema{type: :string, example: "cópia principal"}
+        descricao: %Schema{type: :string, example: "cópia principal"},
+        restrita: %Schema{type: :boolean, default: false}
       },
       required: [:codigo, :espaco]
     })
@@ -81,7 +93,8 @@ defmodule UnlokaoWeb.Schemas do
         espaco: %Schema{type: :string},
         bloco: %Schema{type: :string},
         descricao: %Schema{type: :string},
-        status: %Schema{type: :string, enum: ["disponivel", "indisponivel"]}
+        status: %Schema{type: :string, enum: ["disponivel", "indisponivel"]},
+        restrita: %Schema{type: :boolean}
       }
     })
   end
@@ -127,6 +140,22 @@ defmodule UnlokaoWeb.Schemas do
         matricula: %Schema{type: :string, example: "20231234"},
         telefone: %Schema{type: :string, example: "83 99999-0000"},
         perfil: %Schema{type: :string, enum: UnlokaoWeb.Schemas.Base.perfis()},
+        senha: %Schema{type: :string, format: :password, minLength: 8, maxLength: 72}
+      },
+      required: [:nome, :email, :matricula, :perfil, :senha]
+    })
+  end
+
+  defmodule CadastroEntrada do
+    OpenApiSpex.schema(%{
+      title: "CadastroEntrada",
+      type: :object,
+      properties: %{
+        nome: %Schema{type: :string, example: "Maria Silva"},
+        email: %Schema{type: :string, format: :email, example: "maria@universidade.edu.br"},
+        matricula: %Schema{type: :string, example: "20231234"},
+        telefone: %Schema{type: :string, example: "83 99999-0000"},
+        perfil: %Schema{type: :string, enum: ["aluno", "professor", "servidor"]},
         senha: %Schema{type: :string, format: :password, minLength: 8, maxLength: 72}
       },
       required: [:nome, :email, :matricula, :perfil, :senha]
@@ -260,6 +289,12 @@ defmodule UnlokaoWeb.Schemas do
         usuario: UnlokaoWeb.Schemas.Pessoa,
         entregue_por: UnlokaoWeb.Schemas.Pessoa,
         recebido_por: %Schema{allOf: [UnlokaoWeb.Schemas.Pessoa], nullable: true},
+        devolvido_por: %Schema{
+          allOf: [UnlokaoWeb.Schemas.Pessoa],
+          nullable: true,
+          description:
+            "Quem devolveu a chave fisicamente, se identificado (pode ser diferente de `usuario`)"
+        },
         retirada_em: %Schema{type: :string, format: :"date-time"},
         prazo: %Schema{type: :string, format: :"date-time"},
         devolvida_em: %Schema{type: :string, format: :"date-time", nullable: true},
@@ -272,6 +307,7 @@ defmodule UnlokaoWeb.Schemas do
         :usuario,
         :entregue_por,
         :recebido_por,
+        :devolvido_por,
         :retirada_em,
         :prazo,
         :devolvida_em,
@@ -297,6 +333,99 @@ defmodule UnlokaoWeb.Schemas do
       },
       required: [:chave_id, :usuario_id]
     })
+  end
+
+  defmodule EmprestimoLoteEntrada do
+    OpenApiSpex.schema(%{
+      title: "EmprestimoLoteEntrada",
+      type: :object,
+      properties: %{
+        chave_ids: %Schema{
+          type: :array,
+          items: %Schema{type: :string, format: :uuid},
+          minItems: 1,
+          maxItems: 20
+        },
+        usuario_id: %Schema{type: :string, format: :uuid},
+        prazo: %Schema{
+          type: :string,
+          format: :"date-time",
+          description: "Opcional; padrão de 4 horas depois da retirada"
+        },
+        observacao: %Schema{type: :string, maxLength: 255}
+      },
+      required: [:chave_ids, :usuario_id]
+    })
+  end
+
+  defmodule EmprestimoLoteResposta do
+    OpenApiSpex.schema(%{
+      title: "EmprestimoLoteResposta",
+      type: :object,
+      properties: %{
+        data: %Schema{type: :array, items: UnlokaoWeb.Schemas.Emprestimo}
+      },
+      required: [:data]
+    })
+  end
+
+  defmodule EmprestimoDevolucaoEntrada do
+    OpenApiSpex.schema(%{
+      title: "EmprestimoDevolucaoEntrada",
+      type: :object,
+      properties: %{
+        usuario_id: %Schema{
+          type: :string,
+          format: :uuid,
+          description: "Opcional: quem está devolvendo a chave, se for diferente de quem retirou"
+        }
+      }
+    })
+  end
+
+  defmodule Autorizacao do
+    OpenApiSpex.schema(%{
+      title: "Autorizacao",
+      description: "Uma pessoa na lista de quem pode retirar uma chave restrita",
+      type: :object,
+      properties: %{
+        id: %Schema{type: :string, format: :uuid},
+        usuario: UnlokaoWeb.Schemas.Pessoa,
+        autorizado_por: %Schema{allOf: [UnlokaoWeb.Schemas.Pessoa], nullable: true},
+        valida_ate: %Schema{type: :string, format: :date, nullable: true},
+        vigente: %Schema{type: :boolean, description: "A data de validade ainda não passou"},
+        inserted_at: %Schema{type: :string, format: :"date-time"}
+      },
+      required: [:id, :usuario, :autorizado_por, :valida_ate, :vigente, :inserted_at]
+    })
+  end
+
+  defmodule AutorizacaoEntrada do
+    OpenApiSpex.schema(%{
+      title: "AutorizacaoEntrada",
+      type: :object,
+      properties: %{
+        usuario_id: %Schema{type: :string, format: :uuid},
+        valida_ate: %Schema{
+          type: :string,
+          format: :date,
+          description: "Opcional: último dia em que a autorização vale"
+        }
+      },
+      required: [:usuario_id]
+    })
+  end
+
+  defmodule AutorizacaoResposta do
+    OpenApiSpex.schema(
+      UnlokaoWeb.Schemas.Base.resposta("AutorizacaoResposta", UnlokaoWeb.Schemas.Autorizacao)
+    )
+  end
+
+  defmodule AutorizacaoLista do
+    OpenApiSpex.schema(
+      UnlokaoWeb.Schemas.Base.lista("AutorizacaoLista", UnlokaoWeb.Schemas.Autorizacao)
+    )
   end
 
   defmodule EmprestimoResposta do

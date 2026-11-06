@@ -24,6 +24,28 @@ O primeiro admin também pode ser criado depois, com
 
 Em dev os e-mails não são enviados: aparecem só no log do servidor.
 
+### Dados de demonstração
+
+Em dev, o `mix setup` também cria dados fictícios (`priv/repo/seeds_demonstracao.exs`), então quem clona
+o projeto começa com as mesmas pessoas, chaves e listas. Para colocar num banco que já existe:
+`mix ecto.migrate` e `mix run priv/repo/seeds.exs`. Rodar de novo não duplica nada.
+
+Todas as contas usam a senha `Unlokao@2026`:
+
+| Conta | Perfil | Matrícula | Pode retirar as chaves restritas |
+|---|---|---|---|
+| `admin@unlokao.demo` | admin | `ADM-001` | Nenhuma |
+| `guarda@unlokao.demo` | guarda | `GRD-001` | Nenhuma |
+| `helena.prado@unlokao.demo` | professor | `PROF-1001` | `LAB-101` |
+| `marcos.lima@unlokao.demo` | professor | `PROF-1002` | `LAB-204` |
+| `carla.nunes@unlokao.demo` | servidor | `SERV-2001` | `LAB-101`, `ALM-01` |
+| `ana.rocha@unlokao.demo` | aluno | `20230001` | `LAB-101`, com validade |
+| `bruno.tavares@unlokao.demo` | aluno | `20230002` | Nenhuma: a dele em `LAB-204` venceu |
+| `diego.alves@unlokao.demo` | aluno | `20230003` | Nenhuma |
+
+As chaves `SALA-101`, `SALA-102` e `AUD-01` são livres. Essas contas têm senha pública: não rode
+este seed em produção (ele só roda no ambiente de dev).
+
 ## Endpoints
 
 Todas as requisições e respostas são JSON. Os corpos são enviados sem envelope
@@ -31,6 +53,13 @@ Todas as requisições e respostas são JSON. Os corpos são enviados sem envelo
 
 Faça login e envie o token recebido em todas as outras requisições:
 `Authorization: Bearer <token>`. O token vale por 7 dias.
+
+Na coluna **Acesso**:
+
+- **logado**: qualquer perfil (usuário comum: `aluno`, `professor`, `servidor`).
+- **guarita**: `guarda` ou `admin`. O guarda entrega e recebe as chaves e consulta usuários para
+  identificar quem retira (pelo QR Code da carteirinha ou pela matrícula).
+- **admin**: só `admin`. Cadastra chaves e usuários (inclusive guardas).
 
 ### Autenticação e minha conta
 
@@ -43,6 +72,7 @@ Faça login e envie o token recebido em todas as outras requisições:
 | `GET` | `/api/me/emprestimos` | logado | Empréstimos do usuário logado |
 | `POST` | `/api/senha/esqueci` | público | `{email}`; envia link válido por 1 hora (responde `204` sempre) |
 | `POST` | `/api/senha/redefinir` | público | `{token, senha}`; token de uso único, encerra todas as sessões |
+| `POST` | `/api/cadastro` | público | Cria a própria conta: `{nome, email, matricula, perfil, senha, telefone?}`; só `aluno`, `professor` ou `servidor` |
 
 ### Chaves
 
@@ -54,6 +84,18 @@ Faça login e envie o token recebido em todas as outras requisições:
 | `PATCH` | `/api/chaves/:id` | admin | Edita |
 | `DELETE` | `/api/chaves/:id` | admin | Exclui (lógico); chave emprestada não pode |
 
+`restrita` (padrão `false`): só quem está na lista da chave pode retirar. A lista fica em
+`/api/chaves/:id/autorizacoes`:
+
+| Método | Rota | Acesso | Descrição |
+|---|---|---|---|
+| `GET` | `/api/chaves/:chave_id/autorizacoes` | guarita | Lista; filtro `usuario_id` |
+| `POST` | `/api/chaves/:chave_id/autorizacoes` | admin | Adiciona uma pessoa já cadastrada: `{usuario_id, valida_ate?}` |
+| `DELETE` | `/api/chaves/:chave_id/autorizacoes/:id` | admin | Tira a pessoa da lista |
+
+`valida_ate` é o último dia em que a autorização vale; sem data, vale até ser removida. A regra vale
+também para guardas e admins, e só para a retirada: qualquer pessoa pode devolver uma chave.
+
 `status`: `disponivel` \| `emprestada` \| `indisponivel`. Toda chave nasce `disponivel`,
 e `emprestada` só muda pelo empréstimo e pela devolução.
 
@@ -61,26 +103,33 @@ e `emprestada` só muda pelo empréstimo e pela devolução.
 
 | Método | Rota | Acesso | Descrição |
 |---|---|---|---|
-| `GET` | `/api/usuarios` | admin | Lista; filtros `perfil`, `busca` |
-| `GET` | `/api/usuarios/:id` | admin | Detalha |
+| `GET` | `/api/usuarios` | guarita | Lista; filtros `perfil`, `busca` |
+| `GET` | `/api/usuarios/:id` | guarita | Detalha |
 | `POST` | `/api/usuarios` | admin | Cadastra (`nome`, `email`, `matricula`, `perfil`, `senha`) |
 | `PATCH` | `/api/usuarios/:id` | admin | Edita (a senha não muda por aqui) |
 | `DELETE` | `/api/usuarios/:id` | admin | Desativa; não vale para si mesmo nem para quem está com chave |
 
-`perfil`: `aluno` \| `professor` \| `servidor` \| `admin`. A senha é guardada com hash
+`perfil`: `aluno` \| `professor` \| `servidor` \| `guarda` \| `admin`. A senha é guardada com hash
 (PBKDF2) e nunca aparece nas respostas.
 
 ### Empréstimos
 
 | Método | Rota | Acesso | Descrição |
 |---|---|---|---|
-| `GET` | `/api/emprestimos` | admin | Lista; filtros `situacao` (`aberto`, `atrasado`, `devolvido`), `chave_id`, `usuario_id` |
-| `GET` | `/api/emprestimos/:id` | admin | Detalha |
-| `POST` | `/api/emprestimos` | admin | Retirada: `{chave_id, usuario_id, prazo?, observacao?}`; prazo padrão de 4 horas |
-| `POST` | `/api/emprestimos/:id/devolucao` | admin | Devolução; a chave volta a ficar `disponivel` |
+| `GET` | `/api/emprestimos` | guarita | Lista; filtros `situacao` (`aberto`, `atrasado`, `devolvido`), `chave_id`, `usuario_id` |
+| `GET` | `/api/emprestimos/:id` | guarita | Detalha |
+| `POST` | `/api/emprestimos` | guarita | Retirada: `{chave_id, usuario_id, prazo?, observacao?}`; prazo padrão de 4 horas |
+| `POST` | `/api/emprestimos/lote` | guarita | Retirada de várias chaves para a mesma pessoa: `{chave_ids, usuario_id, prazo?, observacao?}`; até 20 chaves, tudo ou nada |
+| `POST` | `/api/emprestimos/:id/devolucao` | guarita | Devolução: `{usuario_id?}`; a chave volta a ficar `disponivel` |
 
 Uma chave nunca fica em dois empréstimos abertos, nem com retiradas simultâneas.
 A cada 15 minutos, quem está atrasado recebe um aviso por e-mail (uma vez por empréstimo).
+
+Quem retirou (`usuario`) nunca muda durante o empréstimo. Na devolução, `usuario_id` é opcional e
+identifica quem está devolvendo a chave fisicamente, se for diferente de quem retirou (ex: um
+colega devolve no lugar da pessoa) — vira `devolvido_por` na resposta. Sem ele, a devolução segue
+normalmente e `devolvido_por` fica `null`. `recebido_por` continua sendo sempre o guarda/admin
+logado que processou a devolução, não quem trouxe a chave de volta.
 
 ### Paginação
 
@@ -92,11 +141,11 @@ Toda listagem aceita `pagina` (padrão 1) e `por_pagina` (padrão 20, máx. 100)
 | Status | Quando |
 |---|---|
 | `401` | Sem token, token inválido/expirado, ou e-mail/senha errados no login |
-| `403` | Rota só para administradores |
+| `403` | O perfil logado não tem acesso à rota (ex.: usuário comum em rota da guarita) |
 | `404` | Registro não existe, foi excluído ou o id é inválido |
-| `409` | Valor duplicado, chave indisponível, empréstimo já devolvido, exclusão bloqueada por empréstimo |
-| `422` | Campo obrigatório ausente, valor ou filtro inválido, link de redefinição expirado |
-| `429` | Muitas tentativas de login (10/min) ou de "esqueci minha senha" (5/hora) por IP |
+| `409` | Valor duplicado (inclusive pessoa já na lista da chave), chave indisponível, empréstimo já devolvido, exclusão bloqueada por empréstimo |
+| `422` | Campo obrigatório ausente, valor ou filtro inválido, link de redefinição expirado, pessoa sem autorização para retirar a chave |
+| `429` | Muitas tentativas de login (10/min), de "esqueci minha senha" (5/hora) ou de cadastro (5/hora) por IP |
 
 Formato: `{"errors": {"campo": ["mensagem"]}}` ou `{"errors": {"detail": "mensagem"}}`.
 
@@ -135,7 +184,7 @@ A API deve ficar atrás do proxy da hospedagem: o IP do cliente é lido do
 
 | Caminho | O quê |
 |---|---|
-| `lib/unlokao/chaves*`, `lib/unlokao/usuarios*` | Cadastro de chaves e usuários |
+| `lib/unlokao/chaves*`, `lib/unlokao/usuarios*` | Cadastro de chaves e usuários, lista de autorizações por chave |
 | `lib/unlokao/emprestimos*` | Empréstimo, devolução e aviso de atraso |
 | `lib/unlokao/autenticacao*` | Login, sessões, troca e redefinição de senha |
 | `lib/unlokao/paginacao.ex` | Filtros e paginação das listagens |
@@ -145,4 +194,5 @@ A API deve ficar atrás do proxy da hospedagem: o IP do cliente é lido do
 | `lib/unlokao_web/schemas.ex` | Schemas da documentação OpenAPI |
 | `priv/repo/migrations/` | Estrutura do banco |
 | `priv/repo/seeds.exs` | Criação do primeiro admin |
+| `priv/repo/seeds_demonstracao.exs` | Dados fictícios de desenvolvimento |
 | `test/` | Testes (um por critério de aceite das issues) |

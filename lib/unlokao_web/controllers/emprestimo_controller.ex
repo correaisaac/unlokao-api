@@ -21,7 +21,7 @@ defmodule UnlokaoWeb.EmprestimoController do
 
   operation(:index,
     summary: "Lista os empréstimos",
-    description: "Só admin. Do mais recente para o mais antigo.",
+    description: "Admin ou guarda. Do mais recente para o mais antigo.",
     parameters:
       ApiDoc.paginacao(
         @filtros ++
@@ -61,8 +61,8 @@ defmodule UnlokaoWeb.EmprestimoController do
   operation(:create,
     summary: "Registra a retirada de uma chave",
     description: """
-    Só admin. A chave precisa estar `disponivel` e passa para `emprestada`;
-    o admin logado fica como quem entregou.
+    Admin ou guarda. A chave precisa estar `disponivel` e passa para `emprestada`;
+    quem está logado fica como quem entregou.
     """,
     request_body: ApiDoc.corpo(Schemas.EmprestimoEntrada),
     responses:
@@ -79,9 +79,30 @@ defmodule UnlokaoWeb.EmprestimoController do
     end
   end
 
+  operation(:create_lote,
+    summary: "Registra a retirada de várias chaves",
+    description: """
+    Admin ou guarda. Até 20 chaves para a mesma pessoa, com o mesmo prazo e a mesma
+    observação. É tudo ou nada: se uma chave não estiver `disponivel`, nada é registrado.
+    """,
+    request_body: ApiDoc.corpo(Schemas.EmprestimoLoteEntrada),
+    responses:
+      [created: ApiDoc.json("Empréstimos registrados", Schemas.EmprestimoLoteResposta)] ++
+        ApiDoc.erros_admin([:conflito, :validacao])
+  )
+
+  def create_lote(conn, params) do
+    with {:ok, emprestimos} <-
+           Emprestimos.registrar_emprestimos(params, conn.assigns.usuario_atual) do
+      conn
+      |> put_status(:created)
+      |> render(:lote, emprestimos: emprestimos)
+    end
+  end
+
   operation(:show,
     summary: "Detalha um empréstimo",
-    description: "Só admin.",
+    description: "Admin ou guarda.",
     parameters: ApiDoc.id(),
     responses:
       [ok: ApiDoc.json("Empréstimo", Schemas.EmprestimoResposta)] ++
@@ -96,18 +117,20 @@ defmodule UnlokaoWeb.EmprestimoController do
 
   operation(:devolver,
     summary: "Registra a devolução",
-    description:
-      "Só admin. A chave volta a ficar `disponivel`; o admin logado fica como quem recebeu.",
+    description: """
+    Admin ou guarda. A chave volta a ficar `disponivel`; quem está logado fica como quem recebeu.
+    """,
     parameters: ApiDoc.id("Id do empréstimo"),
+    request_body: ApiDoc.corpo(Schemas.EmprestimoDevolucaoEntrada, required: false),
     responses:
       [ok: ApiDoc.json("Empréstimo devolvido", Schemas.EmprestimoResposta)] ++
-        ApiDoc.erros_admin([:nao_encontrado, :conflito])
+        ApiDoc.erros_admin([:nao_encontrado, :conflito, :validacao])
   )
 
-  def devolver(conn, %{"id" => id}) do
+  def devolver(conn, %{"id" => id} = params) do
     with {:ok, emprestimo} <- Emprestimos.fetch_emprestimo(id),
          {:ok, emprestimo} <-
-           Emprestimos.registrar_devolucao(emprestimo, conn.assigns.usuario_atual) do
+           Emprestimos.registrar_devolucao(emprestimo, conn.assigns.usuario_atual, params) do
       render(conn, :show, emprestimo: emprestimo)
     end
   end

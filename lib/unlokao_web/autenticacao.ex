@@ -34,11 +34,22 @@ defmodule UnlokaoWeb.Autenticacao do
 
   @doc "Bloqueia com 403 quem não é admin. Use depois de `exigir_autenticacao`."
   def exigir_admin(%{assigns: %{usuario_atual: %{perfil: :admin}}} = conn, _opts), do: conn
+  def exigir_admin(conn, _opts), do: proibir(conn, "acesso restrito a administradores")
 
-  def exigir_admin(conn, _opts) do
+  @doc """
+  Bloqueia com 403 quem não opera a guarita (admin ou guarda), ou seja, quem
+  não pode entregar e receber chaves. Use depois de `exigir_autenticacao`.
+  """
+  def exigir_guarita(%{assigns: %{usuario_atual: %{perfil: perfil}}} = conn, _opts)
+      when perfil in [:admin, :guarda],
+      do: conn
+
+  def exigir_guarita(conn, _opts), do: proibir(conn, "acesso restrito à guarita")
+
+  defp proibir(conn, mensagem) do
     conn
     |> put_status(:forbidden)
-    |> json(%{errors: %{detail: "acesso restrito a administradores"}})
+    |> json(%{errors: %{detail: mensagem}})
     |> halt()
   end
 end

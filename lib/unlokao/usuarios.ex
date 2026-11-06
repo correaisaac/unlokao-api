@@ -61,6 +61,13 @@ defmodule Unlokao.Usuarios do
     |> Repo.insert()
   end
 
+  @doc "Cadastro feito pela própria pessoa, na tela pública."
+  def autocadastrar_usuario(attrs) do
+    %Usuario{}
+    |> Usuario.autocadastro_changeset(attrs)
+    |> Repo.insert()
+  end
+
   def update_usuario(%Usuario{} = usuario, attrs) do
     usuario
     |> Usuario.update_changeset(attrs)

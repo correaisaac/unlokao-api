@@ -48,7 +48,8 @@ config :unlokao,
   # Máximo de chamadas por IP em cada janela: {máximo, janela em ms}
   limites_de_tentativas: [
     login: {10, :timer.minutes(1)},
-    esqueci_senha: {5, :timer.hours(1)}
+    esqueci_senha: {5, :timer.hours(1)},
+    cadastro: {5, :timer.hours(1)}
   ]
 
 # Configure Elixir's Logger

@@ -78,4 +78,54 @@ defmodule UnlokaoWeb.UsuarioControllerTest do
     assert %{"detail" => "você não pode excluir o próprio usuário"} =
              json_response(conn, 422)["errors"]
   end
+
+  describe "POST /api/cadastro" do
+    @cadastro %{
+      nome: "Maria Silva",
+      email: "maria@universidade.edu.br",
+      matricula: "20231234",
+      perfil: "aluno",
+      senha: "senha-segura-123"
+    }
+
+    setup do
+      {:ok, publico: put_req_header(build_conn(), "accept", "application/json")}
+    end
+
+    test "cria a conta sem login e a pessoa já consegue entrar", %{publico: publico} do
+      assert %{"perfil" => "aluno", "matricula" => "20231234"} =
+               publico
+               |> post(~p"/api/cadastro", @cadastro)
+               |> json_response(201)
+               |> Map.get("data")
+
+      assert publico
+             |> post(~p"/api/login", email: @cadastro.email, senha: @cadastro.senha)
+             |> json_response(200)
+    end
+
+    test "422 ao pedir perfil de guarda ou admin", %{publico: publico} do
+      for perfil <- ["guarda", "admin"] do
+        resposta = post(publico, ~p"/api/cadastro", %{@cadastro | perfil: perfil})
+        assert %{"perfil" => _} = json_response(resposta, 422)["errors"]
+      end
+
+      assert %{status: 401} =
+               post(publico, ~p"/api/login", email: @cadastro.email, senha: @cadastro.senha)
+    end
+
+    test "409 com matrícula ou e-mail já usados", %{publico: publico} do
+      post(publico, ~p"/api/cadastro", @cadastro)
+
+      resposta =
+        post(publico, ~p"/api/cadastro", %{@cadastro | email: "outra@universidade.edu.br"})
+
+      assert %{"matricula" => _} = json_response(resposta, 409)["errors"]
+    end
+
+    test "422 com campos faltando", %{publico: publico} do
+      resposta = post(publico, ~p"/api/cadastro", %{})
+      assert %{"nome" => _, "email" => _, "senha" => _} = json_response(resposta, 422)["errors"]
+    end
+  end
 end
