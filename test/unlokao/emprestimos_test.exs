@@ -122,6 +122,38 @@ defmodule Unlokao.EmprestimosTest do
 
       assert {:error, {:conflict, _}} = Emprestimos.registrar_devolucao(emprestimo, admin)
     end
+
+    test "aceita quem devolveu, que pode ser diferente de quem retirou", %{admin: admin} do
+      emprestimo = emprestimo_fixture(admin: admin)
+      colega = usuario_fixture()
+
+      assert {:ok, devolvido} =
+               Emprestimos.registrar_devolucao(emprestimo, admin, %{"usuario_id" => colega.id})
+
+      assert devolvido.devolvido_por.id == colega.id
+      assert devolvido.usuario.id == emprestimo.usuario.id
+      refute devolvido.devolvido_por.id == devolvido.usuario.id
+    end
+
+    test "sem quem devolveu, segue como antes (etiqueta lida direto)", %{admin: admin} do
+      emprestimo = emprestimo_fixture(admin: admin)
+
+      assert {:ok, devolvido} = Emprestimos.registrar_devolucao(emprestimo, admin, %{})
+      assert devolvido.devolvido_por == nil
+    end
+
+    test "recusa quem devolveu inexistente ou inativo", %{admin: admin} do
+      emprestimo = emprestimo_fixture(admin: admin)
+      inativo = usuario_fixture()
+      {:ok, _} = Usuarios.delete_usuario(inativo, admin)
+
+      for usuario_id <- [Ecto.UUID.generate(), inativo.id, "não é um uuid"] do
+        assert {:error, {:unprocessable, _}} =
+                 Emprestimos.registrar_devolucao(emprestimo, admin, %{"usuario_id" => usuario_id})
+      end
+
+      assert {:ok, %{status: :emprestada}} = Chaves.fetch_chave(emprestimo.chave.id)
+    end
   end
 
   describe "consultas (#20)" do

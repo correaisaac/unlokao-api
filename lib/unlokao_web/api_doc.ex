@@ -26,7 +26,10 @@ defmodule UnlokaoWeb.ApiDoc do
 
   def json(descricao, schema), do: {descricao, "application/json", schema}
 
-  def corpo(schema), do: {"Corpo JSON", "application/json", schema, required: true}
+  def corpo(schema), do: corpo(schema, required: true)
+
+  def corpo(schema, opts),
+    do: {"Corpo JSON", "application/json", schema, required: Keyword.get(opts, :required, true)}
 
   def id(descricao \\ "Id (UUID)"),
     do: [id: [in: :path, schema: %Schema{type: :string, format: :uuid}, description: descricao]]
