@@ -71,6 +71,17 @@ defmodule UnlokaoWeb.OpenApiTest do
       logado |> post(~p"/api/logout") |> assert_documentado()
 
       publico |> post(~p"/api/senha/esqueci", email: admin.email) |> assert_documentado()
+
+      publico
+      |> post(~p"/api/cadastro",
+        nome: "Maria Silva",
+        email: "maria@universidade.edu.br",
+        matricula: "20231234",
+        perfil: "aluno",
+        senha: @senha
+      )
+      |> assert_documentado()
+
       assert_email_sent()
 
       publico

@@ -47,6 +47,74 @@ defmodule UnlokaoWeb.EmprestimoControllerTest do
     end
   end
 
+  describe "POST /api/emprestimos/lote" do
+    test "201 com um empréstimo por chave, todos para a mesma pessoa", %{conn: conn, admin: admin} do
+      [a, b] = [chave_fixture(), chave_fixture()]
+      usuario = usuario_fixture()
+
+      resposta =
+        post(conn, ~p"/api/emprestimos/lote",
+          chave_ids: [a.id, b.id, a.id],
+          usuario_id: usuario.id,
+          observacao: "aula de reposição"
+        )
+
+      assert [primeiro, segundo] = json_response(resposta, 201)["data"]
+
+      assert Enum.sort([primeiro["chave"]["id"], segundo["chave"]["id"]]) ==
+               Enum.sort([a.id, b.id])
+
+      assert primeiro["usuario"]["id"] == usuario.id
+      assert primeiro["entregue_por"]["id"] == admin.id
+      assert primeiro["prazo"] == segundo["prazo"]
+      assert segundo["observacao"] == "aula de reposição"
+
+      for chave <- [a, b] do
+        assert %{"status" => "emprestada"} =
+                 json_response(get(conn, ~p"/api/chaves/#{chave}"), 200)["data"]
+      end
+    end
+
+    test "409 sem registrar nada quando uma chave não está disponível", %{
+      conn: conn,
+      admin: admin
+    } do
+      livre = chave_fixture()
+      emprestimo = emprestimo_fixture(admin: admin)
+      usuario = usuario_fixture()
+
+      resposta =
+        post(conn, ~p"/api/emprestimos/lote",
+          chave_ids: [livre.id, emprestimo.chave.id],
+          usuario_id: usuario.id
+        )
+
+      detalhe = json_response(resposta, 409)["errors"]["detail"]
+      assert detalhe == "a chave #{emprestimo.chave.codigo} não está disponível"
+
+      assert %{"status" => "disponivel"} =
+               json_response(get(conn, ~p"/api/chaves/#{livre}"), 200)["data"]
+
+      assert %{"meta" => %{"total" => 0}} =
+               json_response(get(conn, ~p"/api/emprestimos", usuario_id: usuario.id), 200)
+    end
+
+    test "422 sem chaves, com chaves demais ou com id inválido", %{conn: conn} do
+      usuario = usuario_fixture()
+      demais = for _ <- 1..21, do: Ecto.UUID.generate()
+
+      for chave_ids <- [[], demais, "nao-e-lista"] do
+        resposta =
+          post(conn, ~p"/api/emprestimos/lote", chave_ids: chave_ids, usuario_id: usuario.id)
+
+        assert %{"detail" => _} = json_response(resposta, 422)["errors"]
+      end
+
+      resposta = post(conn, ~p"/api/emprestimos/lote", chave_ids: ["x"], usuario_id: usuario.id)
+      assert %{"chave_id" => _} = json_response(resposta, 422)["errors"]
+    end
+  end
+
   describe "POST /api/emprestimos/:id/devolucao (#19)" do
     test "200 e a chave volta a ficar disponível", %{conn: conn, admin: admin} do
       emprestimo = emprestimo_fixture(admin: admin)

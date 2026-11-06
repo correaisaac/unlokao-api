@@ -2,6 +2,8 @@ defmodule Unlokao.Usuarios.Usuario do
   use Ecto.Schema
   import Ecto.Changeset
 
+  @perfis_de_autocadastro [:aluno, :professor, :servidor]
+
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   schema "usuarios" do
@@ -23,6 +25,13 @@ defmodule Unlokao.Usuarios.Usuario do
     |> cast(attrs, [:nome, :email, :matricula, :telefone, :perfil, :senha])
     |> validar_campos()
     |> validar_senha()
+  end
+
+  @doc "Cadastro feito pela própria pessoa: `guarda` e `admin` só um admin cadastra."
+  def autocadastro_changeset(usuario, attrs) do
+    usuario
+    |> create_changeset(attrs)
+    |> validate_inclusion(:perfil, @perfis_de_autocadastro, message: "não é permitido")
   end
 
   @doc "Troca ou redefinição de senha (#13, #14)."

@@ -50,6 +50,7 @@ Na coluna **Acesso**:
 | `GET` | `/api/me/emprestimos` | logado | Empréstimos do usuário logado |
 | `POST` | `/api/senha/esqueci` | público | `{email}`; envia link válido por 1 hora (responde `204` sempre) |
 | `POST` | `/api/senha/redefinir` | público | `{token, senha}`; token de uso único, encerra todas as sessões |
+| `POST` | `/api/cadastro` | público | Cria a própria conta: `{nome, email, matricula, perfil, senha, telefone?}`; só `aluno`, `professor` ou `servidor` |
 
 ### Chaves
 
@@ -84,6 +85,7 @@ e `emprestada` só muda pelo empréstimo e pela devolução.
 | `GET` | `/api/emprestimos` | guarita | Lista; filtros `situacao` (`aberto`, `atrasado`, `devolvido`), `chave_id`, `usuario_id` |
 | `GET` | `/api/emprestimos/:id` | guarita | Detalha |
 | `POST` | `/api/emprestimos` | guarita | Retirada: `{chave_id, usuario_id, prazo?, observacao?}`; prazo padrão de 4 horas |
+| `POST` | `/api/emprestimos/lote` | guarita | Retirada de várias chaves para a mesma pessoa: `{chave_ids, usuario_id, prazo?, observacao?}`; até 20 chaves, tudo ou nada |
 | `POST` | `/api/emprestimos/:id/devolucao` | guarita | Devolução; a chave volta a ficar `disponivel` |
 
 Uma chave nunca fica em dois empréstimos abertos, nem com retiradas simultâneas.
@@ -103,7 +105,7 @@ Toda listagem aceita `pagina` (padrão 1) e `por_pagina` (padrão 20, máx. 100)
 | `404` | Registro não existe, foi excluído ou o id é inválido |
 | `409` | Valor duplicado, chave indisponível, empréstimo já devolvido, exclusão bloqueada por empréstimo |
 | `422` | Campo obrigatório ausente, valor ou filtro inválido, link de redefinição expirado |
-| `429` | Muitas tentativas de login (10/min) ou de "esqueci minha senha" (5/hora) por IP |
+| `429` | Muitas tentativas de login (10/min), de "esqueci minha senha" (5/hora) ou de cadastro (5/hora) por IP |
 
 Formato: `{"errors": {"campo": ["mensagem"]}}` ou `{"errors": {"detail": "mensagem"}}`.
 

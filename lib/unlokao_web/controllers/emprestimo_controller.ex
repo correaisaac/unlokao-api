@@ -79,6 +79,27 @@ defmodule UnlokaoWeb.EmprestimoController do
     end
   end
 
+  operation(:create_lote,
+    summary: "Registra a retirada de várias chaves",
+    description: """
+    Admin ou guarda. Até 20 chaves para a mesma pessoa, com o mesmo prazo e a mesma
+    observação. É tudo ou nada: se uma chave não estiver `disponivel`, nada é registrado.
+    """,
+    request_body: ApiDoc.corpo(Schemas.EmprestimoLoteEntrada),
+    responses:
+      [created: ApiDoc.json("Empréstimos registrados", Schemas.EmprestimoLoteResposta)] ++
+        ApiDoc.erros_admin([:conflito, :validacao])
+  )
+
+  def create_lote(conn, params) do
+    with {:ok, emprestimos} <-
+           Emprestimos.registrar_emprestimos(params, conn.assigns.usuario_atual) do
+      conn
+      |> put_status(:created)
+      |> render(:lote, emprestimos: emprestimos)
+    end
+  end
+
   operation(:show,
     summary: "Detalha um empréstimo",
     description: "Admin ou guarda.",

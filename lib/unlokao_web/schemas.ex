@@ -133,6 +133,22 @@ defmodule UnlokaoWeb.Schemas do
     })
   end
 
+  defmodule CadastroEntrada do
+    OpenApiSpex.schema(%{
+      title: "CadastroEntrada",
+      type: :object,
+      properties: %{
+        nome: %Schema{type: :string, example: "Maria Silva"},
+        email: %Schema{type: :string, format: :email, example: "maria@universidade.edu.br"},
+        matricula: %Schema{type: :string, example: "20231234"},
+        telefone: %Schema{type: :string, example: "83 99999-0000"},
+        perfil: %Schema{type: :string, enum: ["aluno", "professor", "servidor"]},
+        senha: %Schema{type: :string, format: :password, minLength: 8, maxLength: 72}
+      },
+      required: [:nome, :email, :matricula, :perfil, :senha]
+    })
+  end
+
   defmodule UsuarioEdicao do
     OpenApiSpex.schema(%{
       title: "UsuarioEdicao",
@@ -296,6 +312,40 @@ defmodule UnlokaoWeb.Schemas do
         observacao: %Schema{type: :string, maxLength: 255}
       },
       required: [:chave_id, :usuario_id]
+    })
+  end
+
+  defmodule EmprestimoLoteEntrada do
+    OpenApiSpex.schema(%{
+      title: "EmprestimoLoteEntrada",
+      type: :object,
+      properties: %{
+        chave_ids: %Schema{
+          type: :array,
+          items: %Schema{type: :string, format: :uuid},
+          minItems: 1,
+          maxItems: 20
+        },
+        usuario_id: %Schema{type: :string, format: :uuid},
+        prazo: %Schema{
+          type: :string,
+          format: :"date-time",
+          description: "Opcional; padrão de 4 horas depois da retirada"
+        },
+        observacao: %Schema{type: :string, maxLength: 255}
+      },
+      required: [:chave_ids, :usuario_id]
+    })
+  end
+
+  defmodule EmprestimoLoteResposta do
+    OpenApiSpex.schema(%{
+      title: "EmprestimoLoteResposta",
+      type: :object,
+      properties: %{
+        data: %Schema{type: :array, items: UnlokaoWeb.Schemas.Emprestimo}
+      },
+      required: [:data]
     })
   end
 

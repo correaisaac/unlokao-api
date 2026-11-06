@@ -12,6 +12,7 @@ defmodule Unlokao.Emprestimos do
   alias Unlokao.Usuarios.Usuario
 
   @relacoes [:chave, :usuario, :entregue_por, :recebido_por]
+  @maximo_por_lote 20
 
   @doc """
   Lista os empréstimos, do mais recente para o mais antigo, com paginação.
@@ -87,22 +88,47 @@ defmodule Unlokao.Emprestimos do
   def registrar_emprestimo(attrs, %Usuario{} = admin) do
     agora = DateTime.utc_now(:second)
 
-    changeset =
-      Emprestimo.retirada_changeset(
-        %Emprestimo{entregue_por_id: admin.id, retirada_em: agora},
-        attrs
-      )
-
     Repo.transaction(fn ->
-      with {:ok, dados} <- Ecto.Changeset.apply_action(changeset, :insert),
-           :ok <- verificar_usuario(dados.usuario_id, changeset),
-           :ok <- reservar_chave(dados.chave_id, agora, changeset),
-           {:ok, emprestimo} <- Repo.insert(changeset) do
-        Repo.preload(emprestimo, @relacoes)
-      else
+      case retirar(attrs, admin, agora) do
+        {:ok, emprestimo} -> emprestimo
         {:error, erro} -> Repo.rollback(erro)
       end
     end)
+  end
+
+  @doc """
+  Registra a retirada de várias chaves de uma vez para a mesma pessoa, com o mesmo prazo.
+
+  Espera `chave_ids` (de 1 a #{@maximo_por_lote}) e os demais campos de `registrar_emprestimo/2`.
+  É tudo ou nada: se uma chave não puder sair, nenhum empréstimo é registrado.
+  """
+  def registrar_emprestimos(%{"chave_ids" => chave_ids} = attrs, %Usuario{} = admin)
+      when is_list(chave_ids) and chave_ids != [] and length(chave_ids) <= @maximo_por_lote do
+    agora = DateTime.utc_now(:second)
+    attrs = Map.delete(attrs, "chave_ids")
+
+    Repo.transaction(fn ->
+      # Ordenadas para que dois lotes com as mesmas chaves não travem um ao outro.
+      chave_ids
+      |> Enum.uniq()
+      |> Enum.sort()
+      |> Enum.map(fn chave_id ->
+        case retirar(Map.put(attrs, "chave_id", chave_id), admin, agora) do
+          {:ok, emprestimo} ->
+            emprestimo
+
+          {:error, {:conflict, _}} ->
+            Repo.rollback({:conflict, "a chave #{codigo_da_chave(chave_id)} não está disponível"})
+
+          {:error, erro} ->
+            Repo.rollback(erro)
+        end
+      end)
+    end)
+  end
+
+  def registrar_emprestimos(_attrs, %Usuario{}) do
+    {:error, {:unprocessable, "informe de 1 a #{@maximo_por_lote} chaves em chave_ids"}}
   end
 
   @doc """
@@ -147,6 +173,26 @@ defmodule Unlokao.Emprestimos do
     Repo.update_all(from(e in Emprestimo, where: e.id in ^ids), set: [atraso_avisado_em: agora])
 
     {:ok, length(avisados)}
+  end
+
+  # Precisa rodar dentro de uma transação.
+  defp retirar(attrs, %Usuario{} = admin, agora) do
+    changeset =
+      Emprestimo.retirada_changeset(
+        %Emprestimo{entregue_por_id: admin.id, retirada_em: agora},
+        attrs
+      )
+
+    with {:ok, dados} <- Ecto.Changeset.apply_action(changeset, :insert),
+         :ok <- verificar_usuario(dados.usuario_id, changeset),
+         :ok <- reservar_chave(dados.chave_id, agora, changeset),
+         {:ok, emprestimo} <- Repo.insert(changeset) do
+      {:ok, Repo.preload(emprestimo, @relacoes)}
+    end
+  end
+
+  defp codigo_da_chave(chave_id) do
+    Repo.one(from c in Chave, where: c.id == ^chave_id, select: c.codigo)
   end
 
   defp verificar_usuario(usuario_id, changeset) do

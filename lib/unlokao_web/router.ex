@@ -43,6 +43,10 @@ defmodule UnlokaoWeb.Router do
     plug UnlokaoWeb.LimiteDeTentativas, :esqueci_senha
   end
 
+  pipeline :limite_cadastro do
+    plug UnlokaoWeb.LimiteDeTentativas, :cadastro
+  end
+
   # Rotas públicas
   scope "/api", UnlokaoWeb do
     pipe_through [:api, :limite_login]
@@ -54,6 +58,12 @@ defmodule UnlokaoWeb.Router do
     pipe_through [:api, :limite_esqueci_senha]
 
     post "/senha/esqueci", SenhaController, :esqueci
+  end
+
+  scope "/api", UnlokaoWeb do
+    pipe_through [:api, :limite_cadastro]
+
+    post "/cadastro", UsuarioController, :cadastrar
   end
 
   scope "/api", UnlokaoWeb do
@@ -83,6 +93,7 @@ defmodule UnlokaoWeb.Router do
     resources "/usuarios", UsuarioController, only: [:index, :show]
 
     resources "/emprestimos", EmprestimoController, only: [:index, :show, :create]
+    post "/emprestimos/lote", EmprestimoController, :create_lote
     post "/emprestimos/:id/devolucao", EmprestimoController, :devolver
   end
 

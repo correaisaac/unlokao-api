@@ -47,6 +47,27 @@ defmodule UnlokaoWeb.UsuarioController do
     end
   end
 
+  operation(:cadastrar,
+    summary: "Cria a própria conta",
+    description: """
+    Público. Só para os perfis `aluno`, `professor` e `servidor`: guardas e admins
+    continuam sendo cadastrados por um admin. Limite: 5 cadastros por hora por IP.
+    """,
+    security: [],
+    request_body: ApiDoc.corpo(Schemas.CadastroEntrada),
+    responses:
+      [created: ApiDoc.json("Conta criada", Schemas.UsuarioResposta)] ++
+        ApiDoc.erros([:conflito, :validacao, :muitas_tentativas])
+  )
+
+  def cadastrar(conn, params) do
+    with {:ok, %Usuario{} = usuario} <- Usuarios.autocadastrar_usuario(params) do
+      conn
+      |> put_status(:created)
+      |> render(:show, usuario: usuario)
+    end
+  end
+
   operation(:show,
     summary: "Detalha um usuário",
     description: "Admin ou guarda (lido pelo QR Code da carteirinha).",
